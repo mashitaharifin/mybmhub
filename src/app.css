@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ✨ Smooth color transition when toggling dark/light mode */
+html {
+	transition:
+		background-color 0.3s ease,
+		color 0.3s ease;
+}

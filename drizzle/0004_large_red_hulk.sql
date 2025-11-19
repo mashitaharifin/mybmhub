@@ -1,0 +1,1 @@
+ALTER TABLE "system_settings" ALTER COLUMN "value" SET DATA TYPE text;
