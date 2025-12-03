@@ -198,7 +198,6 @@
 
 	onMount(async () => {
 		try {
-			// 1️⃣ Fetch company profile from API
 			const res = await fetch('/api/system-settings/company-profile');
 			const data = await res.json();
 			if (data.success) {
@@ -216,7 +215,7 @@
 </script>
 
 <svelte:head>
-	<title>Manager – Recent Activity – MyBM Hub</title>
+	<title>Recent Activity – MyBM Hub</title>
 	<meta name="description" content="View recent activity logs for all employees." />
 </svelte:head>
 

@@ -1,5 +1,5 @@
-import { db } from '../src/lib/server/db'; // adjust path
-import { auditLogs, employees } from '../src/lib/server/db/schema';
+import { db } from '../src/lib/server/db/index';
+import { auditLogs, employees } from '../src/lib/server/db/schema/index';
 import { isNull, eq } from 'drizzle-orm';
 
 async function backfillEmployeeID() {

@@ -21,7 +21,8 @@
 		isCarryForward: false,
 		carryForwardDays: 0,
 		requiresDoc: false,
-		isPaid: true
+		isPaid: false,
+		isUnlimited: false
 	};
 
 	let alertMessage: string | null = null;
@@ -47,7 +48,8 @@
 			isCarryForward: false,
 			carryForwardDays: 0,
 			requiresDoc: false,
-			isPaid: true
+			isPaid: false,
+			isUnlimited: false
 		};
 		showForm = true;
 	}
@@ -70,7 +72,8 @@
 			isCarryForward: false,
 			carryForwardDays: 0,
 			requiresDoc: false,
-			isPaid: true
+			isPaid: false,
+			isUnlimited: false
 		};
 	}
 
@@ -170,7 +173,7 @@
 				</div>
 
 				<!-- Checkboxes -->
-				<div class="grid sm:grid-cols-3 gap-4 mt-3">
+				<div class="grid sm:grid-cols-4 gap-4 mt-3">
 					<div>
 						<label class="flex items-center gap-2 pt-6">
 							<input
@@ -222,6 +225,19 @@
 							<span class="text-sm">Paid Leave</span>
 						</label>
 					</div>
+
+					<div>
+						<label class="flex items-center gap-2 pt-6">
+							<input
+								type="checkbox"
+								name="isUnlimited"
+								value="true"
+								bind:checked={form.isUnlimited}
+								class="rounded border-gray-300"
+							/>
+							<span class="text-sm">Unlimited Leave</span>
+						</label>
+					</div>
 				</div>
 
 				<div class="flex justify-end gap-2 mt-4">
@@ -244,6 +260,7 @@
 						<Table.Head>Type</Table.Head>
 						<Table.Head>Carry Fwd</Table.Head>
 						<Table.Head>Paid</Table.Head>
+						<Table.Head>Unlimited</Table.Head>
 						<Table.Head class="text-right">Actions</Table.Head>
 					</Table.Row>
 				</Table.Header>
@@ -255,6 +272,7 @@
 							<Table.Cell>{t.typeName}</Table.Cell>
 							<Table.Cell>{t.isCarryForward ? 'Yes' : 'No'}</Table.Cell>
 							<Table.Cell>{t.isPaid ? 'Yes' : 'No'}</Table.Cell>
+							<Table.Cell>{t.isUnlimited ? 'Yes' : 'No'}</Table.Cell>
 							<Table.Cell class="text-right space-x-2">
 								<button
 									on:click={() => editType(t.id)}
@@ -272,7 +290,7 @@
 						</Table.Row>
 					{:else}
 						<Table.Row>
-							<Table.Cell colspan="6" class="text-center text-muted-foreground h-16">
+							<Table.Cell colspan="7" class="text-center text-muted-foreground h-16">
 								No leave types defined.
 							</Table.Cell>
 						</Table.Row>

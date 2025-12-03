@@ -11,6 +11,8 @@
 
 	export let leaveTypes: any[] = [];
 	export let leaveEntitlementRules: any[] = [];
+	// svelte-ignore export_let_unused
+	export let employeeTypes: string[] = ['Permanent', 'Probation', 'Intern'];
 
 	let showForm = false;
 	let editing = false;
@@ -30,14 +32,14 @@
 	}
 
 	let form = {
-		id: undefined,
+		id: undefined as number | undefined,
 		leaveTypeID: '',
-		empType: 'Permanent',
+		empType: '',
 		minYearsOfService: 0,
 		maxYearsOfService: 0,
 		entitlementDays: 0,
-		effective_from: '',
-		effective_to: ''
+		effectiveYear: new Date().getFullYear(),
+		isActive: true
 	};
 
 	function openNewForm() {
@@ -45,20 +47,26 @@
 		form = {
 			id: undefined,
 			leaveTypeID: '',
-			empType: 'Permanent',
+			empType: '',
 			minYearsOfService: 0,
 			maxYearsOfService: 0,
 			entitlementDays: 0,
-			effective_from: '',
-			effective_to: ''
+			effectiveYear: new Date().getFullYear(),
+			isActive: true
 		};
 		showForm = true;
 	}
 
 	function editRule(id: number) {
 		const r = leaveEntitlementRules.find((x) => x.id === id);
+
 		if (r) {
-			form = { ...r };
+			form = {
+				...r,
+				empType: r.empType, // string only
+				leaveTypeID: r.leaveTypeID.toString()
+			};
+
 			editing = true;
 			showForm = true;
 		}
@@ -87,13 +95,18 @@
 		const formData = new FormData();
 		formData.append('id', id.toString());
 
-		const res = await fetch('?/deleteEntitlement', { method: 'POST', body: formData });
+		try {
+			const res = await fetch('?/deleteEntitlement', { method: 'POST', body: formData });
+			const data = await res.json();
 
-		if (res.ok) {
-			await invalidateAll();
-			showAlert('Leave Entitlement deleted successfully.', 'success');
-		} else {
-			showAlert('Failed to delete leave entitlement.', 'error');
+			if (res.ok && data.success) {
+				await invalidateAll();
+				showAlert('Leave Entitlement deleted successfully.', 'success');
+			} else {
+				showAlert(data?.error || 'Failed to delete leave entitlement.', 'error');
+			}
+		} catch (error) {
+			showAlert('Network error occurred while deleting entitlement.', 'error');
 		}
 	}
 </script>
@@ -137,74 +150,106 @@
 
 				<div class="grid sm:grid-cols-2 gap-3">
 					<label class="block text-sm font-medium mb-1">
-						Leave Type                         <select
+						Leave Type
+						<select
 							name="leaveTypeID"
 							bind:value={form.leaveTypeID}
 							required
-							class="w-full border rounded p-2 bg-background text-foreground"
+							class="w-full rounded p-2 text-foreground dark:bg-gray-800 dark:text-white"
 						>
 							<option value="">-- Select Type --</option>
-							{#each leaveTypes as lt}
+							{#each leaveTypes.filter((lt) => !lt.isUnlimited) as lt}
 								<option value={lt.id}>{lt.typeName}</option>
 							{/each}
 						</select>
 					</label>
+
 					<label class="block text-sm font-medium mb-1">
-						Employment Type                         <select
+						Employee Type
+						<select
 							name="empType"
 							bind:value={form.empType}
 							required
-							class="w-full border rounded p-2 bg-background text-foreground"
+							class="w-full rounded p-2 text-foreground dark:bg-gray-800 dark:text-white"
 						>
+							<option value="">-- Select Type --</option>
 							<option value="Permanent">Permanent</option>
-							<option value="Probation">Probation</option> <option value="Intern">Intern</option>
+							<option value="Probation">Probation</option>
+							<option value="Intern">Intern</option>
 						</select>
 					</label>
 				</div>
 
-				<div class="grid sm:grid-cols-3 gap-3">
-					<label class="block text-sm font-medium mb-1">
-						Minimum Years of Service                         <Input
-							type="number"
-							name="minYearsOfService"
-							bind:value={form.minYearsOfService}
-						/>
-					</label>
-					<label class="block text-sm font-medium mb-1">
-						Maximum Years of Service                         <Input
-							type="number"
-							name="maxYearsOfService"
-							bind:value={form.maxYearsOfService}
-						/>
-					</label>
-					<label class="block text-sm font-medium mb-1">
-						Entitlement Days                         <Input
-							type="number"
-							name="entitlementDays"
-							bind:value={form.entitlementDays}
-						/>
-					</label>
-				</div>
+				{#if leaveTypes.find((lt) => lt.id === form.leaveTypeID)?.typeName === 'Annual Leave'}
+					<div class="grid sm:grid-cols-3 gap-3 mt-3">
+						<label class="block text-sm font-medium mb-1">
+							Minimum Years of Service
+							<Input
+								type="number"
+								name="minYearsOfService"
+								bind:value={form.minYearsOfService}
+								min="0"
+							/>
+						</label>
+						<label class="block text-sm font-medium mb-1">
+							Maximum Years of Service
+							<Input
+								type="number"
+								name="maxYearsOfService"
+								bind:value={form.maxYearsOfService}
+								min="0"
+							/>
+						</label>
+						<label class="block text-sm font-medium mb-1">
+							Entitlement Days
+							<Input
+								type="number"
+								name="entitlementDays"
+								bind:value={form.entitlementDays}
+								min="0"
+								required
+							/>
+						</label>
+					</div>
+				{:else}
+					<div class="grid sm:grid-cols-1 gap-3 mt-3">
+						<label class="block text-sm font-medium mb-1">
+							Entitlement Days
+							<Input
+								type="number"
+								name="entitlementDays"
+								bind:value={form.entitlementDays}
+								min="0"
+								required
+							/>
+						</label>
+					</div>
+				{/if}
+
 				<div class="grid sm:grid-cols-2 gap-4 mt-4">
 					<label class="block text-sm font-medium mb-1">
-						Effective From                         <Input
-							type="date"
-							name="effective_from"
-							bind:value={form.effective_from}
+						Effective Year
+						<Input
+							type="number"
+							name="effectiveYear"
+							bind:value={form.effectiveYear}
+							min="2000"
+							max="2100"
 							required
 						/>
 					</label>
-					<label class="block text-sm font-medium mb-1">
-						Effective To                         <Input
-							type="date"
-							name="effective_to"
-							bind:value={form.effective_to}
-						/>
+
+					<label class="flex items-center text-sm font-medium mb-1 mt-4">
+						<input type="checkbox" name="isActive" bind:checked={form.isActive} class="mr-2" />
+						Active
 					</label>
 				</div>
+
 				<div class="flex justify-end gap-2 mt-4">
 					<Button variant="outline" type="button" on:click={cancelForm}>Cancel</Button>
-					<Button type="submit">{editing ? 'Update' : 'Save'}</Button>
+					<Button type="submit" disabled={!form.empType || !form.leaveTypeID || form.entitlementDays < 0}>
+						{editing ? 'Update' : 'Save'}
+					</Button>
 				</div>
 			</form>
 		{/if}
@@ -218,7 +263,8 @@
 						<Table.Head>Emp. Type</Table.Head>
 						<Table.Head>Years Range</Table.Head>
 						<Table.Head>Entitlement (days)</Table.Head>
-						<Table.Head>Effective Period</Table.Head>
+						<Table.Head>Effective Year</Table.Head>
+						<Table.Head>Active</Table.Head>
 						<Table.Head class="text-right">Actions</Table.Head>
 					</Table.Row>
 				</Table.Header>
@@ -246,14 +292,14 @@
 							<Table.Cell>{r.entitlementDays} days</Table.Cell>
 
 							<Table.Cell>
-								{#if r.effectiveFrom || r.effectiveTo}
-									<span class="text-sm">
-										{r.effectiveFrom ?? '—'} until {r.effectiveTo ?? 'Ongoing'}
-									</span>
+								{#if r.effectiveYear}
+									<span class="text-sm">{r.effectiveYear}</span>
 								{:else}
 									<span class="text-gray-400">—</span>
 								{/if}
 							</Table.Cell>
+
+							<Table.Cell>{r.isActive ? 'Yes' : 'No'}</Table.Cell>
 
 							<Table.Cell class="text-right space-x-2">
 								<button
@@ -272,7 +318,7 @@
 						</Table.Row>
 					{:else}
 						<Table.Row>
-							<Table.Cell colspan="6" class="text-center text-muted-foreground h-16"
+							<Table.Cell colspan="8" class="text-center text-muted-foreground h-16"
 								>No entitlement rules defined.</Table.Cell
 							>
 						</Table.Row>

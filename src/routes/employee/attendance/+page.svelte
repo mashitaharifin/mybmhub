@@ -12,7 +12,16 @@
 		BreadcrumbPage
 	} from '$lib/components/ui/breadcrumb';
 	import * as Alert from '$lib/components/ui/alert';
-	import { Printer, RefreshCcw, ChevronLeft, ChevronRight } from 'lucide-svelte';
+	import {
+		Printer,
+		ChevronLeft,
+		ChevronRight,
+		UserX,
+		UserCheck,
+		Clock,
+		CalendarDays,
+		CalendarCheck
+	} from 'lucide-svelte';
 	import { exportToPDF } from '$lib/utils/exportHelpers';
 
 	let alertMessage: string | null = null;
@@ -26,7 +35,7 @@
 		t = setTimeout(() => (alertMessage = null), 9000);
 	}
 
-	// --- Quick attendance / punch state (reuses /api/dashboard/empQuickAttendance) ---
+	// --- Quick attendance / today's summary ---
 	let quick: any = {
 		summaryDate: null,
 		checkInTime: null,
@@ -36,44 +45,34 @@
 		withinGeofence: null
 	};
 	let formattedTime = '';
+	let runningHours = 0;
+	let runningMinutes = 0;
 	let timer: ReturnType<typeof setInterval> | null = null;
 
-	// --- Filters & pagination ---
-	let monthFilter: string = ''; // yyyy-MM
-	let limit = 20;
-	let offset = 0;
-	let totalRecords = 0;
+	// --- Last 30 days summary + detailed records ---
+	let summaryData: any = {
+		summary: { totalDays: 0, present: 0, absent: 0, avgHours: 0 },
+		records: []
+	};
 	let loading = false;
+	let offset = 0;
+	let limit = 20;
+	let totalRecords = 0;
 
-	// --- Attendance history data ---
-	let records: any[] = [];
+	// --- Geofence and today's punches ---
+	let todayPunches: any[] = [];
+	let activeGeofence: any = null;
 
-	// --- Today's punches (from punch table) and geofence details ---
-	let todayPunches: any[] = []; // each: { id, eventType, eventTime, locationLat, locationLng, notes }
-	let activeGeofence: {
-		id?: number;
-		name?: string;
-		latitude?: number;
-		longitude?: number;
-		radiusMeters?: number;
-	} | null = null;
-
-	// --- Summary stats for the selected month ---
-	let totalLateDays = 0;
-	let totalAbsentDays = 0;
-	let avgHoursPerDay = 0;
-	let totalHoursWorked = 0;
-
-	// --- System shift/settings for validation (fetched) ---
+	// --- Attendance settings ---
 	let attendanceSettings: any = {
-		shiftStart: '09:00', // fallback
+		shiftStart: '09:00',
 		shiftEnd: '18:00',
 		requiredHours: 8,
 		graceMinutes: 10,
 		lunchBreakMins: 60
 	};
 
-	// Helper: update realtime time display
+	// --- Clock ---
 	function updateClock() {
 		const now = new Date();
 		formattedTime = now.toLocaleTimeString([], {
@@ -81,88 +80,77 @@
 			minute: '2-digit',
 			second: '2-digit'
 		});
+
+		// Update running hours for today's attendance
+		if (quick.checkInTime && !quick.checkOutTime) {
+			const diffMs = new Date().getTime() - new Date(quick.checkInTime).getTime();
+			runningHours = Math.floor(diffMs / (1000 * 60 * 60));
+			runningMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+		} else if (quick.workedHours != null) {
+			runningHours = Math.floor(quick.workedHours);
+			runningMinutes = Math.floor((quick.workedHours % 1) * 60);
+		} else {
+			runningHours = 0;
+			runningMinutes = 0;
+		}
 	}
 
-	// --- Load quick (today) attendance status ---
+	// --- Load quick (today) attendance ---
 	async function loadQuickAttendance() {
 		try {
 			const res = await fetch('/api/dashboard/empQuickAttendance');
 			if (!res.ok) throw new Error(`Status ${res.status}`);
 			const data = await res.json();
-			if (data?.success) {
-				quick = data.data;
-			} else {
-				console.warn('empQuickAttendance returned no success', data);
+			if (data?.success && data.data) {
+				quick = { ...data.data, workedHours: Number(data.data.workedHours ?? 0) };
 			}
 		} catch (err) {
-			console.error('Failed to fetch quick attendance', err);
-			showAlert('Failed to load today summary (quick attendance).', 'error');
+			console.error('Failed to load quick attendance', err);
+			showAlert('Failed to load today summary.', 'error');
 		}
 	}
 
-	// --- Load attendance settings (shift / required hours) ---
-	const loadAttendanceSettings = async () => {
+	// --- Load attendance settings ---
+	async function loadAttendanceSettings() {
 		try {
-			const res = await fetch('/api/system-settings/workinghour'); 
+			const res = await fetch('/api/system-settings/workinghour');
 			if (!res.ok) throw new Error(`Status ${res.status}`);
 			const data = await res.json();
-			attendanceSettings.set(data); 
+			if (data?.success && data.data) attendanceSettings = data.data;
 		} catch (err) {
 			console.error('Failed to fetch attendance settings', err);
 		}
-	};
-	// --- Load active geofence from system settings (recommended endpoint) ---
+	}
+
+	// --- Load geofence ---
 	async function loadActiveGeofence() {
 		try {
 			const res = await fetch('/api/system-settings/active-geofence');
-			if (!res.ok) {
-				// If endpoint not present, return gracefully
-				console.warn('active-geofence endpoint not available', res.status);
-				return;
-			}
+			if (!res.ok) return;
 			const data = await res.json();
-			if (data?.success && data.data) {
-				activeGeofence = data.data;
-				// ensure numbers
-				if (activeGeofence) {
-					activeGeofence.latitude = Number(activeGeofence.latitude ?? 0);
-					activeGeofence.longitude = Number(activeGeofence.longitude ?? 0);
-					activeGeofence.radiusMeters = Number(activeGeofence.radiusMeters ?? 0);
-				}
-			}
-		} catch (err) {
-			console.warn('Failed to load active geofence', err);
-		}
+			if (data?.success && data.data) activeGeofence = data.data;
+		} catch {}
 	}
 
-	// --- Load today's punches from punch table (recommended endpoint) ---
+	// --- Load today's punches ---
 	async function loadTodayPunches() {
 		try {
-			const date =
-				quick.summaryDate && quick.summaryDate.split
-					? quick.summaryDate.split('T')[0]
-					: new Date().toISOString().split('T')[0];
+			const date = quick.summaryDate
+				? quick.summaryDate.split('T')[0]
+				: new Date().toISOString().split('T')[0];
 			const res = await fetch(`/api/attendance/punches?date=${date}`);
 			if (!res.ok) {
-				console.warn('attendance/punches responded with', res.status);
-				// fallback: keep empty todayPunches
+				todayPunches = [];
 				return;
 			}
 			const data = await res.json();
-			if (data?.success && Array.isArray(data.data?.punches)) {
-				todayPunches = data.data.punches.map((p: any) => ({
-					...p,
-					locationLat: p.locationLat != null ? Number(p.locationLat) : null,
-					locationLng: p.locationLng != null ? Number(p.locationLng) : null,
-					eventTime: p.eventTime
-				}));
-			}
+			if (data?.success && Array.isArray(data.records)) todayPunches = data.records;
 		} catch (err) {
-			console.warn('Failed to load today punches', err);
+			todayPunches = [];
 		}
 	}
 
-	// Haversine distance (meters)
+	// --- Haversine distance ---
 	function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
 		const toRad = (v: number) => (v * Math.PI) / 180;
 		const R = 6371000;
@@ -171,210 +159,149 @@
 		const a =
 			Math.sin(dLat / 2) ** 2 +
 			Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-		return R * c;
+		return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 	}
 
 	function punchWithinGeofence(punch: any) {
 		if (!activeGeofence || !punch.locationLat || !punch.locationLng) return null;
 		const dist = haversineDistance(
-			Number(punch.locationLat),
-			Number(punch.locationLng),
-			Number(activeGeofence.latitude),
-			Number(activeGeofence.longitude)
+			punch.locationLat,
+			punch.locationLng,
+			activeGeofence.latitude,
+			activeGeofence.longitude
 		);
-		return { within: dist <= Number(activeGeofence.radiusMeters), distanceMeters: dist };
+		return { within: dist <= activeGeofence.radiusMeters, distanceMeters: dist };
 	}
 
-	// --- Load attendance history for the month (monthFilter: yyyy-MM) ---
-	async function loadAttendanceHistory() {
+	// --- Load last 30 days summary ---
+	async function loadAttendanceSummary() {
 		loading = true;
 		try {
-			// Build params
-			const params = new URLSearchParams({
-				limit: String(limit),
-				offset: String(offset)
-			});
-			if (monthFilter) params.append('month', monthFilter);
-
-			const res = await fetch(`/api/attendance/history?${params.toString()}`);
-			// Improved error reporting (why earlier vague error happened)
-			if (!res.ok) {
-				let bodyText = '';
-				try {
-					bodyText = await res.text();
-				} catch {}
-				const errMsg = `Attendance history fetch failed: status ${res.status} ${bodyText ? '- ' + bodyText : ''}`;
-				console.error(errMsg);
-				showAlert('Error fetching attendance history. Check console for details.', 'error');
-				loading = false;
-				return;
-			}
-
+			const res = await fetch('/api/attendance/summary');
+			if (!res.ok) throw new Error(`Status ${res.status}`);
 			const data = await res.json();
-			if (data?.success) {
-				records = data.data.records ?? [];
-				totalRecords = data.data.total ?? records.length;
-
-				// compute summary stats
-				calcSummary(records);
-			} else {
-				console.error('Attendance history responded with success=false', data);
-				showAlert(data?.error || 'Failed to fetch attendance history', 'error');
+			if (data?.success && data.records) {
+				summaryData = data;
+				totalRecords = summaryData.records.length;
 			}
 		} catch (err) {
-			console.error('Unexpected error loading attendance history', err);
-			showAlert('Failed to fetch attendance history (network or server error).', 'error');
+			console.error('Failed to load attendance summary', err);
+			showAlert('Failed to load attendance summary.', 'error');
 		} finally {
 			loading = false;
 		}
 	}
 
-	function calcSummary(rows: any[]) {
-		totalLateDays = 0;
-		totalAbsentDays = 0;
-		totalHoursWorked = 0;
-		let presentDays = 0;
-		for (const r of rows) {
-			if (!r.checkInTime && !r.checkOutTime) {
-				totalAbsentDays++;
-				continue;
-			}
-			if (r.workedHours != null) totalHoursWorked += Number(r.workedHours);
-			if (r.checkInTime) {
-				const checkIn = new Date(r.checkInTime);
-				const [sh, sm] = String(attendanceSettings.shiftStart || '09:00')
-					.split(':')
-					.map(Number);
-				const shiftStart = new Date(checkIn);
-				shiftStart.setHours(sh, sm + (attendanceSettings.graceMinutes ?? 0), 0, 0);
-				if (checkIn.getTime() > shiftStart.getTime()) totalLateDays++;
-			}
-			if (r.checkInTime || r.checkOutTime) presentDays++;
-		}
-		avgHoursPerDay = presentDays ? +(totalHoursWorked / presentDays).toFixed(2) : 0;
-		totalHoursWorked = +totalHoursWorked.toFixed(2);
-	}
+	$: sortedRecords = [...summaryData.records].sort(
+		(a, b) => new Date(b.summaryDate).getTime() - new Date(a.summaryDate).getTime()
+	);
 
-	// --- Pagination controls ---
-	function prevPage() {
-		if (offset - limit >= 0) {
-			offset -= limit;
-			loadAttendanceHistory();
-		}
-	}
-	function nextPage() {
-		if (offset + limit < totalRecords) {
-			offset += limit;
-			loadAttendanceHistory();
-		}
-	}
-
-	// --- Export (PDF only) ---
-	async function handleExportPDF() {
-		try {
-			const filterText = `My Attendance${monthFilter ? ' - ' + monthFilter : ''}`;
-			let company = {};
-			try {
-				const r = await fetch('/api/system-settings/company-profile');
-				const d = await r.json();
-				if (d?.success) company = d.company ?? {};
-			} catch (e) {}
-			await exportToPDF(records, `${filterText}.pdf`, filterText, company);
-		} catch (err) {
-			console.error('Export PDF failed', err);
-			showAlert('Failed to export PDF', 'error');
-		}
-	}
-
-	// --- Punch handler: reuse dashboard POST API ---
+	// --- Punch handler ---
 	let punchProcessing = false;
 	async function handlePunch(actionType: 'IN' | 'OUT') {
 		if (punchProcessing) return;
 		if (!navigator.geolocation) {
-			showAlert('Geolocation not supported in this browser', 'error');
+			showAlert('Geolocation not supported', 'error');
 			return;
 		}
 		punchProcessing = true;
 		navigator.geolocation.getCurrentPosition(
 			async (pos) => {
 				try {
-					const { latitude, longitude, accuracy } = pos.coords;
 					const res = await fetch('/api/dashboard/empQuickAttendance', {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ actionType, latitude, longitude, accuracyMeters: accuracy })
+						body: JSON.stringify({
+							actionType,
+							latitude: pos.coords.latitude,
+							longitude: pos.coords.longitude,
+							accuracyMeters: pos.coords.accuracy
+						})
 					});
 					const data = await res.json();
 					if (data?.success) {
 						showAlert(data.message || 'Punch successful', 'success');
 						await loadQuickAttendance();
-						await loadAttendanceHistory();
-						// refresh punches & geofence
+						await loadAttendanceSummary();
 						await loadActiveGeofence();
 						await loadTodayPunches();
-					} else {
-						showAlert(data?.error || 'Punch failed', 'error');
-					}
+					} else showAlert(data?.error || 'Punch failed', 'error');
 				} catch (err) {
-					console.error('Punch error', err);
-					showAlert('Failed to punch. Try again.', 'error');
+					showAlert('Failed to punch', 'error');
 				} finally {
 					punchProcessing = false;
 				}
 			},
 			(err) => {
-				console.warn('Geolocation error', err);
-				showAlert('Failed to retrieve location. Allow location to punch.', 'error');
+				showAlert('Failed to get location', 'error');
 				punchProcessing = false;
 			}
 		);
 	}
 
-	// --- Derived helpers for display & validation ---
 	function formatTime(iso: string | null) {
 		if (!iso) return '-';
-		try {
-			return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-		} catch {
-			return iso;
-		}
+		return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 	}
 
 	function getStatusBadge(status: string) {
-		if (!status) return 'bg-gray-400 text-white';
-		const s = status.toLowerCase();
-		if (s === 'present' || s === 'in' || s === 'out') return 'bg-green-500 text-white';
-		if (s === 'late') return 'bg-yellow-400 text-black';
-		if (s === 'absent') return 'bg-red-500 text-white';
-		return 'bg-gray-400 text-white';
-	}
+		const s = (status ?? '').toLowerCase();
 
-	// Show punch button only when needed (hybrid: only if not completed/out)
-	function shouldShowPunchButton() {
-		const st = (quick?.status ?? '').toUpperCase();
-		return st === 'ABSENT' || st === 'NONE' || st === 'IN';
+		switch (s) {
+			case 'present':
+			case 'in':
+			case 'out':
+				return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
+			case 'late':
+				return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500 dark:text-yellow-100';
+			case 'absent':
+				return 'bg-red-200 text-red-800 dark:bg-red-600 dark:text-red-100';
+			default:
+				return 'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-100';
+		}
 	}
 
 	function punchButtonType() {
-		const st = (quick?.status ?? '').toUpperCase();
-		if (st === 'IN') return 'OUT';
+		// If no check-in time, show Punch In
+		if (!quick.checkInTime) return 'IN';
+
+		// If has check-in time but no check-out time, show Punch Out
+		if (quick.checkInTime && !quick.checkOutTime) return 'OUT';
+
+		// If both check-in and check-out exist, show Punch In (for next day)
 		return 'IN';
 	}
 
+	let company: {
+		logoPath?: string;
+		name?: string;
+		address?: string;
+		country?: string;
+		email?: string;
+		phone?: string;
+		regNo?: string;
+	} = {};
+
+	async function loadCompanyProfile() {
+		try {
+			const res = await fetch('/api/system-settings/company-profile');
+			const data = await res.json();
+			if (data.success) company = data.company;
+		} catch (err) {
+			console.error('Failed to fetch company info:', err);
+		}
+	}
+
 	onMount(async () => {
+		await loadQuickAttendance();
 		updateClock();
 		timer = setInterval(updateClock, 1000);
-
-		// default month to current month (yyyy-MM)
-		const now = new Date();
-		monthFilter = `${now.getFullYear().toString().padStart(4, '0')}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
-
+		await loadCompanyProfile(); // Cleaner call
 		await loadAttendanceSettings();
 		await loadQuickAttendance();
 		await loadActiveGeofence();
 		await loadTodayPunches();
-		await loadAttendanceHistory();
+		await loadAttendanceSummary();
 	});
 
 	onDestroy(() => {
@@ -393,366 +320,312 @@
 
 <Card.Root class="w-full p-6 space-y-4">
 	<Card.Header>
-		<div class="flex flex-col">
-			<Breadcrumb>
-				<BreadcrumbList>
-					<BreadcrumbItem>
-						<BreadcrumbLink href="/employee/dashboard">Dashboard</BreadcrumbLink>
-					</BreadcrumbItem>
-					<BreadcrumbSeparator />
-					<BreadcrumbItem>
-						<BreadcrumbPage>Attendance</BreadcrumbPage>
-					</BreadcrumbItem>
-				</BreadcrumbList>
-			</Breadcrumb>
-
-			<br />
-			<div>
-				<Card.Title>My Attendance</Card.Title>
-				<Card.Description class="mt-1 text-gray-500 dark:text-gray-400">
-					Record and view your daily attendance, worked hours, and performance summary.
-				</Card.Description>
-			</div>
-		</div>
+		<Breadcrumb>
+			<BreadcrumbList>
+				<BreadcrumbItem
+					><BreadcrumbLink href="/employee/dashboard">Dashboard</BreadcrumbLink></BreadcrumbItem
+				>
+				<BreadcrumbSeparator />
+				<BreadcrumbItem><BreadcrumbPage>Attendance</BreadcrumbPage></BreadcrumbItem>
+			</BreadcrumbList>
+		</Breadcrumb>
+		<br />
+		<Card.Title>My Attendance</Card.Title>
+		<Card.Description class="mt-1 text-gray-500 dark:text-gray-400">
+			Record and view your daily attendance, worked hours, and performance summary.
+		</Card.Description>
 	</Card.Header>
 
 	<Card.Content>
 		{#if alertMessage}
 			<Alert.Root variant={alertVariant}>
-				<Alert.Title>
-					{alertVariant === 'success' ? 'Success' : alertVariant === 'error' ? 'Error' : 'Info'}
-				</Alert.Title>
+				<Alert.Title
+					>{alertVariant === 'success'
+						? 'Success'
+						: alertVariant === 'error'
+							? 'Error'
+							: 'Info'}</Alert.Title
+				>
 				<Alert.Description>{alertMessage}</Alert.Description>
 			</Alert.Root>
 		{/if}
 
-		<!-- Top: Daily Status wrapped in a card (improved UI) -->
+		<!-- Today's Attendance Card -->
 		<Card.Root class="p-4 bg-white dark:bg-gray-800 shadow-sm rounded-lg">
 			<Card.Header>
 				<div class="flex justify-between items-start">
 					<div>
-						<Card.Title class="text-lg">Today</Card.Title>
+						<Card.Title class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+							Today's Attendance
+						</Card.Title>
 						<Card.Description class="mt-1 text-sm text-gray-500 dark:text-gray-400">
 							{new Date(quick.summaryDate ?? new Date()).toLocaleDateString()}
 						</Card.Description>
 					</div>
-
-					<div class="text-sm text-gray-600 dark:text-gray-200">
-						<div class="font-medium">{formattedTime}</div>
+					<div class="text-lg font-bold text-gray-600 dark:text-gray-200">
+						{formattedTime}
 					</div>
 				</div>
 			</Card.Header>
 
 			<Card.Content>
-				<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+				<div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
 					<div class="space-y-2 flex-1">
-						<div class="text-sm">
+						<div class="text-sm text-gray-800 dark:text-gray-200">
 							<strong>Check In:</strong>
 							{formatTime(quick.checkInTime)}
 						</div>
-						<div class="text-sm">
+						<div class="text-sm text-gray-800 dark:text-gray-200">
 							<strong>Check Out:</strong>
 							{formatTime(quick.checkOutTime)}
 						</div>
-						<div class="text-sm">
+						<div class="text-sm text-gray-800 dark:text-gray-200">
 							<strong>Hours Worked:</strong>
-							{quick.workedHours != null ? `${+quick.workedHours.toFixed(2)} h` : '-'}
+							{runningHours}h {runningMinutes}m
 						</div>
-						<div class="text-sm">
+
+						<div class="text-sm text-gray-800 dark:text-gray-200">
 							<strong>Geofence Summary:</strong>
 							{#if activeGeofence}
 								<div class="mt-2 space-y-1">
 									{#each todayPunches as p}
 										<div class="text-sm flex items-center gap-2">
+											<!-- Geofence dot -->
 											<div
 												class="w-3 h-3 rounded-full"
 												style="background-color: {punchWithinGeofence(p)?.within
-													? '#10B981'
-													: '#F59E0B'}"
+													? document.documentElement.classList.contains('dark')
+														? '#059669'
+														: '#10B981'
+													: document.documentElement.classList.contains('dark')
+														? '#FBBF24'
+														: '#F59E0B'}"
 											></div>
-											<div class="font-semibold">{p.eventType}</div>
-											<div class="text-xs text-gray-500">
+
+											<div class="font-semibold text-gray-900 dark:text-gray-100">
+												{p.eventType}
+											</div>
+
+											<div class="text-xs text-gray-500 dark:text-gray-400">
 												at {new Date(p.eventTime).toLocaleTimeString([], {
 													hour: '2-digit',
 													minute: '2-digit'
 												})}
 											</div>
-											{#each todayPunches as p}
-												<div class="text-sm flex items-center gap-2">
-													<div
-														class="w-3 h-3 rounded-full"
-														style="background-color: {punchWithinGeofence(p)?.within
-															? '#10B981'
-															: '#F59E0B'}"
-													></div>
-													<div class="font-semibold">{p.eventType}</div>
-													<div class="text-xs text-gray-500">
-														at {new Date(p.eventTime).toLocaleTimeString([], {
-															hour: '2-digit',
-															minute: '2-digit'
-														})}
-													</div>
-													<div class="ml-2 text-xs">
-														{#if punchWithinGeofence(p)}
-															{punchWithinGeofence(p)?.within
-																? 'Within geofence'
-																: `Outside (${Math.round(punchWithinGeofence(p)?.distanceMeters ?? 0)} m)`}
-														{:else}
-															No location
-														{/if}
-													</div>
-												</div>
-											{/each}
+
+											<div class="text-xs text-gray-600 dark:text-gray-300">
+												{punchWithinGeofence(p)
+													? punchWithinGeofence(p)?.within
+														? 'Within geofence'
+														: `Outside (${Math.round(punchWithinGeofence(p)?.distanceMeters ?? 0)} m)`
+													: 'No location'}
+											</div>
 										</div>
 									{/each}
+
 									{#if todayPunches.length === 0}
-										<div class="text-sm text-gray-500">No punches recorded for today.</div>
+										<div class="text-sm text-gray-500 dark:text-gray-400">
+											No punches recorded for today.
+										</div>
 									{/if}
-									<div class="text-xs text-gray-400 mt-1">
-										Geofence: {activeGeofence.name ?? '—'} ({activeGeofence.latitude ?? '-'}, {activeGeofence.longitude ??
-											'-'}, r={activeGeofence.radiusMeters ?? '-'} m)
+
+									<div class="text-sm text-gray-400 dark:text-gray-500 mt-1">
+										Geofence: {activeGeofence?.name ?? '—'} ({activeGeofence?.latitude ?? '-'},
+										{activeGeofence?.longitude ?? '-'}, r={activeGeofence?.radiusMeters ?? '-'} m)
 									</div>
 								</div>
 							{:else}
-								<div class="ml-2 text-sm text-gray-500">
+								<div class="ml-2 text-sm text-gray-500 dark:text-gray-400">
 									Geofence not configured (system setting).
 								</div>
 							{/if}
 						</div>
 					</div>
 
-					<!-- Punch button (Hybrid: only when needed) -->
-					<div class="min-w-[160px]">
-						{#if shouldShowPunchButton()}
-							<Button
-								on:click={() => handlePunch(punchButtonType() as 'IN' | 'OUT')}
-								disabled={punchProcessing}
-								class="w-full"
-							>
-								{punchProcessing
-									? 'Processing...'
-									: punchButtonType() === 'IN'
-										? 'Punch In'
-										: 'Punch Out'}
-							</Button>
-						{:else}
-							<div class="text-sm text-gray-500">
-								No punch actions here. Use Quick Punch on the Dashboard for quick access.
+					<!-- Punch button right-aligned like the live clock -->
+					<div class="flex items-start justify-end min-w-[160px]">
+						{#if quick.checkOutTime}
+							<div class="text-sm text-gray-500 dark:text-gray-400 text-right">
+								Completed for today
 							</div>
-						{/if}
-					</div>
-				</div>
-
-				<hr class="my-4" />
-
-				<!-- Validation summary (full validation) -->
-				<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-					<div class="p-3 rounded-lg border bg-gray-50 dark:bg-gray-700">
-						<div class="text-xs text-gray-500">Required Hours</div>
-						<div class="text-lg font-semibold">{attendanceSettings.requiredHours} h</div>
-					</div>
-					<div class="p-3 rounded-lg border bg-gray-50 dark:bg-gray-700">
-						<div class="text-xs text-gray-500">Late Today</div>
-						{#if quick.checkInTime}
-							{#if new Date(quick.checkInTime) > (() => {
-									const d = new Date(quick.checkInTime);
-									const [h, m] = String(attendanceSettings.shiftStart || '09:00')
-										.split(':')
-										.map(Number);
-									const grace = Number(attendanceSettings.graceMinutes || 0);
-									const shift = new Date(d);
-									shift.setHours(h, m + grace, 0, 0);
-									return shift;
-								})()}
-								<div class="text-lg font-semibold text-yellow-600">Yes</div>
-							{:else}
-								<div class="text-lg font-semibold text-green-600">No</div>
-							{/if}
 						{:else}
-							<div class="text-lg font-semibold text-gray-500">-</div>
-						{/if}
-					</div>
-					<div class="p-3 rounded-lg border bg-gray-50 dark:bg-gray-700">
-						<div class="text-xs text-gray-500">Over / Under Time</div>
-						{#if quick.workedHours != null}
-							{#if quick.workedHours >= attendanceSettings.requiredHours}
-								<div class="text-lg font-semibold text-green-600">
-									Overtime {+(quick.workedHours - attendanceSettings.requiredHours).toFixed(2)} h
-								</div>
-							{:else}
-								<div class="text-lg font-semibold text-red-600">
-									Under {+(attendanceSettings.requiredHours - quick.workedHours).toFixed(2)} h
-								</div>
-							{/if}
-						{:else}
-							<div class="text-lg font-semibold text-gray-500">-</div>
+							<button
+								on:click={() => handlePunch(quick.checkInTime ? 'OUT' : 'IN')}
+								disabled={punchProcessing}
+								class="text-sm font-medium px-3 py-1.5 rounded-2xl border text-red-600 bg-white hover:bg-red-500 hover:text-white dark:bg-gray-700 dark:text-white dark:hover:bg-red-800 transition"
+							>
+								{punchProcessing ? 'Processing...' : quick.checkInTime ? 'Punch Out' : 'Punch In'}
+							</button>
 						{/if}
 					</div>
 				</div>
 			</Card.Content>
 		</Card.Root>
 
-		<!-- Monthly summary & controls -->
-		<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 mb-4">
-			<div class="col-span-2">
-				<Card.Root class="p-4">
-					<Card.Header>
-						<Card.Title class="text-sm">Attendance Records</Card.Title>
-					</Card.Header>
-					<Card.Content>
-						<!-- Filters -->
-						<div class="flex flex-wrap gap-4 mb-4 items-end">
-							<div class="flex flex-col text-sm font-medium">
-								<label for="month" class="text-gray-700 dark:text-gray-300">Month</label>
-								<input
-									id="month"
-									type="month"
-									bind:value={monthFilter}
-									on:change={() => {
-										offset = 0;
-										loadAttendanceHistory();
-									}}
-									class="text-sm rounded-lg border border-gray-300 bg-white p-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
-								/>
-							</div>
-
-							<div class="flex gap-2 ml-auto items-center">
-								<button
-									title="Refresh"
-									on:click={() => {
-										offset = 0;
-										loadAttendanceHistory();
-									}}
-									class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
-									aria-label="Refresh"
-								>
-									<RefreshCcw class="w-5 h-5" />
-								</button>
-
-								<button
-									title="Export PDF"
-									on:click={handleExportPDF}
-									class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
-									aria-label="Export PDF"
-								>
-									<Printer class="w-5 h-5" />
-								</button>
-							</div>
+		<!-- Last 30 Days Summary Card -->
+		<Card.Root class="p-4 bg-white dark:bg-gray-800 shadow-sm rounded-lg mt-4">
+			<Card.Header>
+				<Card.Title
+					class="text-lg font-semibold flex items-center gap-2 text-gray-900 dark:text-gray-100"
+				>
+					<CalendarDays class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+					Last 30 Days Summary
+				</Card.Title>
+			</Card.Header>
+			<Card.Content>
+				<div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
+					<div class="flex items-center gap-3 p-4 rounded-lg bg-blue-50 dark:bg-blue-900">
+						<CalendarCheck class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+						<div>
+							<p class="text-sm text-gray-500 dark:text-white">Total Days</p>
+							<p class="text-lg font-semibold text-blue-700 dark:text-blue-300">
+								{summaryData.summary.totalDays}
+							</p>
 						</div>
+					</div>
+					<div class="flex items-center gap-3 p-4 rounded-lg bg-green-50 dark:bg-green-900">
+						<UserCheck class="w-6 h-6 text-green-600 dark:text-green-400" />
+						<div>
+							<p class="text-sm text-gray-500 dark:text-white">Present</p>
+							<p class="text-lg font-semibold text-green-700 dark:text-green-300">
+								{summaryData.summary.present}
+							</p>
+						</div>
+					</div>
+					<div class="flex items-center gap-3 p-4 rounded-lg bg-red-50 dark:bg-red-900">
+						<UserX class="w-6 h-6 text-red-600 dark:text-red-400" />
+						<div>
+							<p class="text-sm text-gray-500 dark:text-white">Absent</p>
+							<p class="text-lg font-semibold text-red-700 dark:text-red-300">
+								{summaryData.summary.absent}
+							</p>
+						</div>
+					</div>
+					<div class="flex items-center gap-3 p-4 rounded-lg bg-indigo-50 dark:bg-indigo-900">
+						<Clock class="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+						<div>
+							<p class="text-sm text-gray-500 dark:text-white">Average Hours / Day</p>
+							<p class="text-lg font-semibold text-indigo-700 dark:text-indigo-300">
+								{+summaryData.summary.avgHours.toFixed(2)}
+							</p>
+						</div>
+					</div>
+				</div>
+			</Card.Content>
+		</Card.Root>
 
-						<!-- Attendance Table -->
-						<div class="overflow-x-auto">
-							<Table.Root>
-								<Table.Header>
+		<!-- Detailed Attendance Records Card -->
+		<Card.Root class="p-4 bg-white dark:bg-gray-800 shadow-sm rounded-lg mt-4">
+			<Card.Header>
+				<Card.Title
+					class="text-lg font-semibold flex items-center gap-2 text-gray-900 dark:text-gray-100"
+				>
+					<Clock class="w-5 h-5 text-blue-600 dark:text-blue-400" /> Detailed Attendance Records
+				</Card.Title>
+			</Card.Header>
+			<Card.Content>
+				<div class="overflow-x-auto mt-2">
+					<Table.Root>
+						<Table.Header>
+							<Table.Row>
+								<Table.Head>#</Table.Head>
+								<Table.Head>Date</Table.Head>
+								<Table.Head>Punch In</Table.Head>
+								<Table.Head>Punch-in Location</Table.Head>
+								<Table.Head>Punch Out</Table.Head>
+								<Table.Head>Punch-out Location</Table.Head>
+								<Table.Head>Hours</Table.Head>
+								<Table.Head>Status</Table.Head>
+								<Table.Head>Remarks</Table.Head>
+							</Table.Row>
+						</Table.Header>
+						<Table.Body>
+							{#if loading}
+								<Table.Row>
+									<Table.Cell colspan="7" class="text-center h-16">Loading...</Table.Cell>
+								</Table.Row>
+							{:else if summaryData.records.length === 0}
+								<Table.Row>
+									<Table.Cell colspan="9" class="text-center h-16"
+										>No attendance records in last 30 days.</Table.Cell
+									>
+								</Table.Row>
+							{:else}
+								{#each sortedRecords.slice(offset, offset + limit) as r, i}
 									<Table.Row>
-										<Table.Head class="w-[50px]">#</Table.Head>
-										<Table.Head>Date</Table.Head>
-										<Table.Head>Day</Table.Head>
-										<Table.Head>Check In</Table.Head>
-										<Table.Head>Check Out</Table.Head>
-										<Table.Head>Hours</Table.Head>
-										<Table.Head>Status</Table.Head>
-										<Table.Head>Remarks</Table.Head>
-									</Table.Row>
-								</Table.Header>
-								<Table.Body>
-									{#if records.length}
-										{#each records as r, i}
-											<Table.Row>
-												<Table.Cell>{offset + i + 1}</Table.Cell>
-												<Table.Cell>{r.summaryDate ?? '-'}</Table.Cell>
-												<Table.Cell
-													>{r.summaryDate
-														? new Date(r.summaryDate).toLocaleDateString([], { weekday: 'short' })
-														: '-'}</Table.Cell
-												>
-												<Table.Cell>{formatTime(r.checkInTime)}</Table.Cell>
-												<Table.Cell>{formatTime(r.checkOutTime)}</Table.Cell>
-												<Table.Cell
-													>{r.workedHours != null
-														? `${+r.workedHours.toFixed(2)} h`
-														: '-'}</Table.Cell
-												>
-												<Table.Cell>
-													<span
-														class={`px-2 py-1 rounded-xl text-xs ${getStatusBadge(r.status ?? (r.checkInTime ? 'Present' : 'Absent'))}`}
-														>{r.status ?? (r.checkInTime ? 'Present' : 'Absent')}</span
-													>
-												</Table.Cell>
-												<Table.Cell class="whitespace-pre-wrap break-words max-w-xs"
-													>{r.remarks ?? '-'}</Table.Cell
-												>
-											</Table.Row>
-										{/each}
-									{:else}
-										<Table.Row>
-											<Table.Cell colspan="8" class="text-center text-muted-foreground h-16"
-												>No attendance records found.</Table.Cell
+										<Table.Cell>{offset + i + 1}</Table.Cell>
+										<Table.Cell>{new Date(r.summaryDate).toLocaleDateString()}</Table.Cell>
+										<Table.Cell>{formatTime(r.checkInTime)}</Table.Cell>
+										<Table.Cell>
+											{#if r.checkInLocation}
+												{r.checkInLocation.locationName
+													? r.checkInLocation.locationName
+													: `Outside Geofence (${r.checkInLocation.lat.toFixed(6)}, ${r.checkInLocation.lng.toFixed(6)})`}
+											{:else}-{/if}
+										</Table.Cell>
+										<Table.Cell>{formatTime(r.checkOutTime)}</Table.Cell>
+										<Table.Cell>
+											{#if r.checkOutLocation}
+												{r.checkOutLocation.locationName
+													? r.checkOutLocation.locationName
+													: `Outside Geofence (${r.checkOutLocation.lat.toFixed(6)}, ${r.checkOutLocation.lng.toFixed(6)})`}
+											{:else}-{/if}
+										</Table.Cell>
+										<Table.Cell
+											>{r.workedHours != null
+												? `${Number(r.workedHours).toFixed(2)} h`
+												: '-'}</Table.Cell
+										>
+										<Table.Cell>
+											<span
+												class={`px-2 py-1 rounded-xl text-xs ${getStatusBadge(r.status ?? (r.checkInTime ? 'Present' : 'Absent'))}`}
 											>
-										</Table.Row>
-									{/if}
-								</Table.Body>
-							</Table.Root>
-						</div>
+												{r.status ?? (r.checkInTime ? 'Present' : 'Absent')}
+											</span>
+										</Table.Cell>
+										<Table.Cell>{r.remarks ?? '-'}</Table.Cell>
+									</Table.Row>
+								{/each}
+							{/if}
+						</Table.Body>
+					</Table.Root>
 
-						<!-- Pagination Icons only -->
-						<div class="flex justify-between mt-4 items-center">
-							<div class="text-sm text-gray-600 dark:text-gray-100">
-								Showing {offset + 1}-{Math.min(offset + limit, totalRecords)} of {totalRecords} records
-							</div>
-							<div class="flex space-x-2 items-center">
-								<button
-									title="Previous page"
-									on:click={prevPage}
-									disabled={offset === 0}
-									class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
-									aria-label="Previous page"
-								>
-									<ChevronLeft class="w-5 h-5" />
-								</button>
-								<button
-									title="Next page"
-									on:click={nextPage}
-									disabled={offset + limit >= totalRecords}
-									class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
-									aria-label="Next page"
-								>
-									<ChevronRight class="w-5 h-5" />
-								</button>
-							</div>
+					<!-- Pagination & Export -->
+					<div class="flex justify-between mt-4 items-center">
+						<div class="text-sm text-gray-600 dark:text-gray-100">
+							Showing {offset + 1}-{Math.min(offset + limit, totalRecords)} of {totalRecords} records
 						</div>
-					</Card.Content>
-				</Card.Root>
-			</div>
+						<div class="flex gap-2">
+							<Button
+								on:click={() => (offset = Math.max(0, offset - limit))}
+								disabled={offset === 0}
+								title="Previous"
+							>
+								<ChevronLeft class="w-4 h-4" />
+							</Button>
 
-			<!-- Monthly summary tiles -->
-			<div class="col-span-1">
-				<Card.Root class="p-4 space-y-3">
-					<Card.Header>
-						<Card.Title class="text-sm">Monthly Summary</Card.Title>
-					</Card.Header>
-					<Card.Content>
-						<div class="grid grid-cols-1 gap-2">
-							<div class="flex justify-between text-sm">
-								<span>Total Late Days</span>
-								<span class="font-medium">{totalLateDays}</span>
-							</div>
-							<div class="flex justify-between text-sm">
-								<span>Total Absent Days</span>
-								<span class="font-medium">{totalAbsentDays}</span>
-							</div>
-							<div class="flex justify-between text-sm">
-								<span>Total Hours Worked</span>
-								<span class="font-medium">{totalHoursWorked} h</span>
-							</div>
-							<div class="flex justify-between text-sm">
-								<span>Average Hours/Day</span>
-								<span class="font-medium">{avgHoursPerDay} h</span>
-							</div>
+							<Button
+								on:click={() => (offset = Math.min(totalRecords - limit, offset + limit))}
+								disabled={offset + limit >= totalRecords}
+								title="Next"
+							>
+								<ChevronRight class="w-4 h-4" />
+							</Button>
+							<Button
+								title="Export PDF"
+								on:click={() =>
+									exportToPDF(
+										summaryData.records,
+										'Attendance_Last_30_Days.pdf',
+										'Last 30 Days Attendance'
+									)}
+							>
+								<Printer />
+							</Button>
 						</div>
-					</Card.Content>
-				</Card.Root>
-			</div>
-		</div>
+					</div>
+				</div>
+			</Card.Content>
+		</Card.Root>
 	</Card.Content>
 </Card.Root>

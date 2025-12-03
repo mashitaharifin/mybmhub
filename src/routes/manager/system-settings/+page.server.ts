@@ -229,7 +229,9 @@ export const actions = {
 	createLeaveType: async ({ request, locals }) => {
 		const formData = await request.formData();
 		const typeName = formData.get('typeName')?.toString()?.trim();
-		const isPaid = !!formData.get('isPaid');
+		const isPaid = formData.get('isPaid') === 'true' || formData.get('isPaid') === 'on';
+		const isUnlimited =
+			formData.get('isUnlimited') === 'true' || formData.get('isUnlimited') === 'on';
 		const maxDaysPerYear = Number(formData.get('maxDaysPerYear')) || null;
 		const isCarryForward = !!formData.get('isCarryForward');
 		const carryForwardDays = Number(formData.get('carryForwardDays')) || 0;
@@ -245,17 +247,13 @@ export const actions = {
 			});
 		}
 
-		if (maxDaysPerYear !== null && maxDaysPerYear < 0) {
-			return fail(400, { error: 'Max Days per Year cannot be negative.' });
-		}
-
 		try {
 			const [newType] = await db
 				.insert(leaveTypes)
 				.values({
 					typeName,
 					isPaid,
-					maxDaysPerYear,
+					isUnlimited,
 					isCarryForward,
 					carryForwardDays,
 					requiresDoc
@@ -269,7 +267,7 @@ export const actions = {
 				action: 'Create Leave Type',
 				targetTable: 'leave_types',
 				targetID: newType.id,
-				details: `Created leave type '${typeName}' (Paid: ${isPaid ? 'Yes' : 'No'}, Carry Forward: ${isCarryForward ? 'Yes' : 'No'})`,
+				details: `Created leave type '${typeName}' (Paid: ${isPaid ? 'Yes' : 'No'}, Unlimited: ${isUnlimited ? 'Yes' : 'No'}, Carry Forward: ${isCarryForward ? 'Yes' : 'No'})`,
 				isUserVisible: true
 			});
 
@@ -287,8 +285,9 @@ export const actions = {
 		const formData = await request.formData();
 		const id = Number(formData.get('id'));
 		const typeName = formData.get('typeName')?.toString()?.trim();
-		const isPaid = formData.get('isPaid') === 'true';
-		const maxDaysPerYear = Number(formData.get('maxDaysPerYear')) || null;
+		const isPaid = formData.get('isPaid') === 'true' || formData.get('isPaid') === 'on';
+		const isUnlimited =
+			formData.get('isUnlimited') === 'true' || formData.get('isUnlimited') === 'on';
 		const isCarryForward = formData.get('isCarryForward') === 'true';
 		const carryForwardDays = Number(formData.get('carryForwardDays')) || 0;
 		const requiresDoc = formData.get('requiresDoc') === 'true';
@@ -305,17 +304,13 @@ export const actions = {
 			});
 		}
 
-		if (maxDaysPerYear !== null && maxDaysPerYear < 0) {
-			return fail(400, { error: 'Max Days per Year cannot be negative.' });
-		}
-
 		try {
 			await db
 				.update(leaveTypes)
 				.set({
 					typeName,
 					isPaid,
-					maxDaysPerYear,
+					isUnlimited,
 					isCarryForward,
 					carryForwardDays,
 					requiresDoc
@@ -329,7 +324,7 @@ export const actions = {
 				action: 'Update Leave Type',
 				targetTable: 'leave_types',
 				targetID: id,
-				details: `Updated leave type '${typeName}' (ID=${id}) with new values: Paid=${isPaid}, CarryForward=${isCarryForward}, CarryDays=${carryForwardDays}, RequiresDoc=${requiresDoc}`,
+				details: `Updated leave type '${typeName}' (ID=${id}) with new values: Paid=${isPaid}, Unlimited=${isUnlimited}, CarryForward=${isCarryForward}, CarryDays=${carryForwardDays}, RequiresDoc=${requiresDoc}`,
 				isUserVisible: true
 			});
 
@@ -389,161 +384,363 @@ export const actions = {
 	// ------------------------------------
 	// 3. LEAVE ENTITLEMENT CRUD
 	// ------------------------------------
-
 	createEntitlement: async ({ request, locals }) => {
-		const data = await request.formData();
-		const leaveTypeID = Number(data.get('leaveTypeID'));
-		const empType = data.get('empType')?.toString() as 'Permanent' | 'Probation' | 'Intern';
-		const minYearsOfService = Number(data.get('minYearsOfService'));
-		const maxYearsOfService = Number(data.get('maxYearsOfService'));
-		const entitlementDays = Number(data.get('entitlementDays'));
-		const effectiveFrom = data.get('effective_from')?.toString() || null;
-		const effectiveTo = data.get('effective_to')?.toString() || null;
+		try {
+			const data = await request.formData();
+			const leaveTypeID = Number(data.get('leaveTypeID'));
+			const empType = data.get('empType') as string;
+			const minYearsOfService = Number(data.get('minYearsOfService')) || 0;
+			const maxYearsOfService = Number(data.get('maxYearsOfService')) || 0;
+			const entitlementDays = Number(data.get('entitlementDays'));
+			const effectiveYear = Number(data.get('effectiveYear'));
+			const isActive = data.get('isActive') === 'on';
 
-		if (!leaveTypeID || !empType || !entitlementDays || !effectiveFrom) {
-			return fail(400, {
-				error:
-					'Leave type, employment type, entitlement days, and effective from date are required.'
-			});
-		}
-
-		if (minYearsOfService < 0 || maxYearsOfService < 0) {
-			return fail(400, { error: 'Years of service cannot be negative.' });
-		}
-
-		if (maxYearsOfService && maxYearsOfService < minYearsOfService) {
-			return fail(400, { error: 'Maximum years of service cannot be less than minimum years.' });
-		}
-
-		// Prevent duplicate rules (same leaveType + empType + years overlap)
-		const existing = await db
-			.select()
-			.from(leaveEntitlementRules)
-			.where(
-				and(
-					eq(leaveEntitlementRules.leaveTypeID, leaveTypeID),
-					eq(leaveEntitlementRules.empType, empType)
-				)
-			);
-
-		if (
-			existing.some((r) => {
-				const min = r.minYearsOfService ?? 0;
-				const max = r.maxYearsOfService ?? 999;
-				return (
-					(minYearsOfService >= min && minYearsOfService <= max) ||
-					(maxYearsOfService >= min && maxYearsOfService <= max)
-				);
-			})
-		) {
-			return fail(400, {
-				error: 'An entitlement rule already exists for this employment type and year range.'
-			});
-		}
-
-		const [newEntitlement] = await db
-			.insert(leaveEntitlementRules)
-			.values({
+			console.log('Create form data:', {
 				leaveTypeID,
 				empType,
 				minYearsOfService,
 				maxYearsOfService,
 				entitlementDays,
-				effectiveFrom,
-				effectiveTo
-			})
-			.returning({ id: leaveEntitlementRules.id });
+				effectiveYear,
+				isActive
+			});
 
-		await db.insert(auditLogs).values({
-			userID: locals.user?.id ?? null,
-			employeeID: null,
-			actionType: 'CREATE',
-			action: 'Create Leave Entitlement',
-			targetTable: 'leave_entitlement_rules',
-			targetID: newEntitlement.id,
-			details: `Created leave entitlement for type ID ${leaveTypeID}, ${empType} employees.`,
-			isUserVisible: false
-		});
+			// Validation
+			if (!leaveTypeID || !empType || isNaN(entitlementDays) || !effectiveYear) {
+				return fail(400, {
+					error: 'Leave type, employment type, entitlement days, and effective year are required.'
+				});
+			}
 
-		return { success: true, message: 'Leave Entitlement created successfully.' };
+			if (entitlementDays < 0) {
+				return fail(400, { error: 'Entitlement days cannot be negative.' });
+			}
+
+			if (entitlementDays === 0) {
+				return fail(400, { error: 'Entitlement days must be greater than 0.' });
+			}
+
+			if (minYearsOfService < 0 || maxYearsOfService < 0) {
+				return fail(400, { error: 'Years of service cannot be negative.' });
+			}
+
+			if (maxYearsOfService > 0 && maxYearsOfService < minYearsOfService) {
+				return fail(400, { error: 'Maximum years of service cannot be less than minimum years.' });
+			}
+
+			// Validate empType
+			if (empType !== 'Permanent' && empType !== 'Probation' && empType !== 'Intern') {
+				return fail(400, { error: 'Invalid employment type selected.' });
+			}
+
+			const validEmpType = empType as 'Permanent' | 'Probation' | 'Intern';
+
+			// Prevent adding rules to unlimited leave types
+			const lType = await db
+				.select()
+				.from(leaveTypes)
+				.where(eq(leaveTypes.id, leaveTypeID))
+				.limit(1);
+			if (!lType.length) {
+				return fail(400, { error: 'Invalid leave type selected.' });
+			}
+
+			if (lType[0]?.isUnlimited) {
+				return fail(400, { error: 'Unlimited leave types do not use entitlement rules.' });
+			}
+
+			// Check for overlapping rules (UPDATED LOGIC)
+			const existingRules = await db
+				.select()
+				.from(leaveEntitlementRules)
+				.where(
+					and(
+						eq(leaveEntitlementRules.leaveTypeID, leaveTypeID),
+						eq(leaveEntitlementRules.empType, validEmpType),
+						eq(leaveEntitlementRules.effectiveYear, effectiveYear)
+					)
+				);
+
+			// Check if the new rule overlaps with any existing rule
+			const hasOverlap = existingRules.some((rule) => {
+				const ruleMin = rule.minYearsOfService ?? 0;
+				const ruleMax = rule.maxYearsOfService ?? 99; // Use a high number for null max
+
+				const newMin = minYearsOfService;
+				const newMax = maxYearsOfService === 0 ? 0 : maxYearsOfService || 999;
+
+				// Check for range overlap
+				return newMin <= ruleMax && newMax >= ruleMin;
+			});
+
+			if (hasOverlap) {
+				return fail(400, {
+					error: `An overlapping entitlement rule already exists for ${validEmpType} employees in ${effectiveYear}. Please check the years of service ranges.`
+				});
+			}
+
+			// Create
+			const result = await db
+				.insert(leaveEntitlementRules)
+				.values({
+					leaveTypeID,
+					empType: validEmpType,
+					minYearsOfService: minYearsOfService || null,
+					maxYearsOfService: maxYearsOfService || null,
+					entitlementDays,
+					effectiveYear,
+					isActive
+				})
+				.returning();
+
+			// Audit log
+			await db.insert(auditLogs).values({
+				userID: locals.user?.id ?? null,
+				actionType: 'CREATE',
+				action: 'Create Leave Entitlement',
+				targetTable: 'leave_entitlement_rules',
+				targetID: result[0].id,
+				details: `Created entitlement rule for ${validEmpType}, entitlement=${entitlementDays} days`,
+				isUserVisible: false
+			});
+
+			return {
+				success: true,
+				message: 'Leave Entitlement created successfully.'
+			};
+		} catch (error) {
+			console.error('Create entitlement error:', error);
+			return fail(500, { error: 'Internal server error while creating entitlement.' });
+		}
 	},
 
 	updateEntitlement: async ({ request, locals }) => {
-		const data = await request.formData();
-		const id = Number(data.get('id'));
-		const leaveTypeID = Number(data.get('leaveTypeID'));
-		const empType = data.get('empType')?.toString() as 'Permanent' | 'Probation' | 'Intern';
-		const minYearsOfService = Number(data.get('minYearsOfService'));
-		const maxYearsOfService = Number(data.get('maxYearsOfService'));
-		const entitlementDays = Number(data.get('entitlementDays'));
-		const effectiveFrom = data.get('effective_from')?.toString() || null;
-		const effectiveTo = data.get('effective_to')?.toString() || null;
+		try {
+			const data = await request.formData();
+			const id = Number(data.get('id'));
+			const leaveTypeID = Number(data.get('leaveTypeID'));
+			const empType = data.get('empType') as string;
+			const minYearsOfService = Number(data.get('minYearsOfService')) || 0;
+			const maxYearsOfService = Number(data.get('maxYearsOfService')) || 0;
+			const entitlementDays = Number(data.get('entitlementDays'));
+			const effectiveYear = Number(data.get('effectiveYear'));
+			const isActive = data.get('isActive') === 'on';
 
-		if (!id || !leaveTypeID || !empType || !entitlementDays) {
-			return fail(400, { error: 'Missing required fields for update.' });
-		}
-
-		await db
-			.update(leaveEntitlementRules)
-			.set({
+			console.log('Update form data:', {
+				id,
 				leaveTypeID,
 				empType,
 				minYearsOfService,
 				maxYearsOfService,
 				entitlementDays,
-				effectiveFrom,
-				effectiveTo
-			})
-			.where(eq(leaveEntitlementRules.id, id));
+				effectiveYear,
+				isActive
+			});
 
-		await db.insert(auditLogs).values({
-			userID: locals.user?.id ?? null,
-			employeeID: null,
-			actionType: 'UPDATE',
-			action: 'Update Leave Entitlement',
-			targetTable: 'leave_entitlement_rules',
-			targetID: id,
-			details: `Updated entitlement rule ID ${id}`,
-			isUserVisible: false
-		});
+			// Validation
+			if (!id || !leaveTypeID || !empType || isNaN(entitlementDays) || !effectiveYear) {
+				return fail(400, { error: 'All required fields must be filled.' });
+			}
 
-		return { success: true, message: 'Leave Entitlement updated successfully.' };
+			if (entitlementDays < 0) {
+				return fail(400, { error: 'Entitlement days cannot be negative.' });
+			}
+
+			if (entitlementDays === 0) {
+				return fail(400, { error: 'Entitlement days must be greater than 0.' });
+			}
+
+			if (minYearsOfService < 0 || maxYearsOfService < 0) {
+				return fail(400, { error: 'Years of service cannot be negative.' });
+			}
+
+			if (maxYearsOfService > 0 && maxYearsOfService < minYearsOfService) {
+				return fail(400, { error: 'Maximum years of service cannot be less than minimum years.' });
+			}
+
+			// Validate empType
+			if (empType !== 'Permanent' && empType !== 'Probation' && empType !== 'Intern') {
+				return fail(400, { error: 'Invalid employment type selected.' });
+			}
+
+			const validEmpType = empType as 'Permanent' | 'Probation' | 'Intern';
+
+			// Check if rule exists
+			const existingRule = await db
+				.select()
+				.from(leaveEntitlementRules)
+				.where(eq(leaveEntitlementRules.id, id))
+				.limit(1);
+
+			if (!existingRule.length) {
+				return fail(404, { error: 'Entitlement rule not found.' });
+			}
+
+			// Prevent updating unlimited leave type
+			const lType = await db
+				.select()
+				.from(leaveTypes)
+				.where(eq(leaveTypes.id, leaveTypeID))
+				.limit(1);
+			if (lType[0]?.isUnlimited) {
+				return fail(400, {
+					error: 'This leave type is unlimited and does not use entitlement rules.'
+				});
+			}
+
+			// Check for overlapping rules (excluding current rule) - UPDATED LOGIC
+			const existingRules = await db
+				.select()
+				.from(leaveEntitlementRules)
+				.where(
+					and(
+						eq(leaveEntitlementRules.leaveTypeID, leaveTypeID),
+						eq(leaveEntitlementRules.empType, validEmpType),
+						eq(leaveEntitlementRules.effectiveYear, effectiveYear),
+						ne(leaveEntitlementRules.id, id)
+					)
+				);
+
+			// Check if the updated rule overlaps with any other existing rules
+			const hasOverlap = existingRules.some((rule) => {
+				const ruleMin = rule.minYearsOfService ?? 0;
+				const ruleMax = rule.maxYearsOfService ?? 999; // Use a very high number for null max
+
+				const newMin = minYearsOfService;
+				const newMax = maxYearsOfService === 0 ? 0 : maxYearsOfService || 999; // Keep 0 as 0, not convert to 99
+
+				// Check for range overlap
+				return newMin <= ruleMax && newMax >= ruleMin;
+			});
+
+			if (hasOverlap) {
+				return fail(400, {
+					error: `An overlapping entitlement rule already exists for ${validEmpType} employees in ${effectiveYear}. Please check the years of service ranges.`
+				});
+			}
+
+			// Update
+			await db
+				.update(leaveEntitlementRules)
+				.set({
+					leaveTypeID,
+					empType: validEmpType,
+					minYearsOfService: minYearsOfService || null,
+					maxYearsOfService: maxYearsOfService || null,
+					entitlementDays,
+					effectiveYear,
+					isActive
+				})
+				.where(eq(leaveEntitlementRules.id, id));
+
+			// Audit log
+			await db.insert(auditLogs).values({
+				userID: locals.user?.id ?? null,
+				actionType: 'UPDATE',
+				action: 'Update Leave Entitlement',
+				targetTable: 'leave_entitlement_rules',
+				targetID: id,
+				details: `Updated entitlement rule ID ${id} for ${validEmpType}`,
+				isUserVisible: false
+			});
+
+			return {
+				success: true,
+				message: 'Leave Entitlement updated successfully.'
+			};
+		} catch (error) {
+			console.error('Update entitlement error:', error);
+			return fail(500, { error: 'Internal server error while updating entitlement.' });
+		}
 	},
 
 	deleteEntitlement: async ({ request, locals }) => {
-		const data = await request.formData();
-		const id = Number(data.get('id'));
-		if (!id) return fail(400, { error: 'Missing entitlement ID.' });
+		try {
+			const data = await request.formData();
+			const id = Number(data.get('id'));
 
-		// Prevent deletion if linked to leave balances
-		const linked = await db
-			.select()
-			.from(leaveBalances)
-			.where(eq(leaveBalances.leaveEntitlementRuleID, id));
+			if (!id) {
+				return fail(400, {
+					error: 'Missing entitlement ID.'
+				});
+			}
 
-		if (linked.length > 0) {
-			return fail(400, {
-				error:
-					'Cannot delete this entitlement rule because it is linked to existing leave balances.'
+			// Check if rule exists
+			const rule = await db
+				.select()
+				.from(leaveEntitlementRules)
+				.where(eq(leaveEntitlementRules.id, id))
+				.limit(1);
+
+			if (!rule.length) {
+				return fail(404, {
+					error: 'Entitlement rule not found.'
+				});
+			}
+
+			// Prevent deletion if linked to leave balances (or other tables)
+			const linkedBalances = await db
+				.select()
+				.from(leaveBalances)
+				.where(eq(leaveBalances.leaveEntitlementRuleID, id))
+				.limit(1); // Just check if any exist, no need to get all
+
+			if (linkedBalances.length > 0) {
+				// Get actual count for the error message
+				const balanceCount = await db
+					.select({ count: sql<number>`count(*)` })
+					.from(leaveBalances)
+					.where(eq(leaveBalances.leaveEntitlementRuleID, id));
+
+				const employeeCount = balanceCount[0]?.count || 0;
+
+				return fail(400, {
+					error: `Cannot delete this entitlement rule because it is currently assigned to ${employeeCount} employee(s). Please reassign or remove these employees from this rule before deleting.`
+				});
+			}
+
+			// Optional: Check if there are any leave applications that might reference this rule
+			// const linkedApplications = await db...
+			// if (linkedApplications.length > 0) {
+			//     return fail(400, {
+			//         error: 'Cannot delete this entitlement rule because it is referenced by existing leave applications.'
+			//     });
+			// }
+
+			// Delete the rule
+			await db.delete(leaveEntitlementRules).where(eq(leaveEntitlementRules.id, id));
+
+			// Audit log
+			await db.insert(auditLogs).values({
+				userID: locals.user?.id ?? null,
+				actionType: 'DELETE',
+				action: 'Delete Leave Entitlement',
+				targetTable: 'leave_entitlement_rules',
+				targetID: id,
+				details: `Deleted entitlement rule ID ${id} for ${rule[0].empType} employees (${rule[0].minYearsOfService}-${rule[0].maxYearsOfService} years)`,
+				isUserVisible: false
+			});
+
+			return {
+				success: true,
+				message: 'Leave Entitlement deleted successfully.'
+			};
+		} catch (error) {
+			console.error('Delete entitlement error:', error);
+
+			// Handle foreign key constraint errors from database
+			if (error instanceof Error && error.message.includes('foreign key constraint')) {
+				return fail(400, {
+					error:
+						'Cannot delete this entitlement rule because it is referenced by other records in the system.'
+				});
+			}
+
+			return fail(500, {
+				error: 'Internal server error while deleting entitlement. Please try again.'
 			});
 		}
-
-		await db.delete(leaveEntitlementRules).where(eq(leaveEntitlementRules.id, id));
-
-		await db.insert(auditLogs).values({
-			userID: locals.user?.id ?? null,
-			employeeID: null,
-			actionType: 'DELETE',
-			action: 'Delete Leave Entitlement',
-			targetTable: 'leave_entitlement_rules',
-			targetID: id,
-			details: `Deleted entitlement rule ID ${id}`,
-			isUserVisible: false
-		});
-
-		return { success: true, message: 'Leave Entitlement deleted successfully.' };
 	},
-
 	// ------------------------------------
 	// 4. WORKING HOURS CRUD
 	// ------------------------------------

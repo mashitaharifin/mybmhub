@@ -160,7 +160,7 @@
 							id="holidayType"
 							name="type"
 							bind:value={holidayForm.type}
-							class="w-full rounded border px-2 py-1"
+							class="w-full rounded px-2 py-1 dark:bg-gray-800 dark:text-white"
 						>
 							<option value="National">National</option>
 							<option value="State">State</option>
@@ -176,7 +176,7 @@
 							name="startDate"
 							type="date"
 							bind:value={holidayForm.startDate}
-							class="w-full rounded border px-2 py-1"
+							class="w-full rounded px-2 py-1 dark:bg-gray-800 dark:text-white"
 						/>
 					</div>
 					<div>
@@ -186,7 +186,7 @@
 							name="endDate"
 							type="date"
 							bind:value={holidayForm.endDate}
-							class="w-full rounded border px-2 py-1"
+							class="w-full rounded px-2 py-1 dark:bg-gray-800 dark:text-white"
 						/>
 					</div>
 				</div>

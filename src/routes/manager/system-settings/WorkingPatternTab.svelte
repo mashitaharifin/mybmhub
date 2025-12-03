@@ -228,7 +228,7 @@
 							type="date"
 							name="effectiveFrom"
 							bind:value={patternForm.effectiveFrom}
-							class="w-full rounded border px-2 py-1"
+							class="w-full rounded px-2 py-1 dark:bg-gray-800 dark:text-white"
 							required
 						/>
 					</div>
@@ -240,7 +240,7 @@
 							type="date"
 							name="effectiveTo"
 							bind:value={patternForm.effectiveTo}
-							class="w-full rounded border px-2 py-1"
+							class="w-full rounded px-2 py-1 dark:bg-gray-800 dark:text-white"
 						/>
 					</div>
 				</div>

@@ -2,8 +2,10 @@
 	// svelte-ignore export_let_unused
 	export let open = false;
 	export let toggle: () => void;
-	export let label: string = 'Select';
+	export let label: string = '';
 	export let placeholder: string = 'Select option';
+	export let value: string | null = null;
+	export let items: Array<{value: string, label: string}> = [];
 </script>
 
 <button
@@ -14,7 +16,15 @@
 		border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600
 		focus:ring-2 focus:ring-primary-500 outline-none transition"
 >
-	<span>{label || placeholder}</span>
+	<span>
+		{#if value && items.length > 0}
+			{items.find(item => item.value === value)?.label || placeholder}
+		{:else if label}
+			{label}
+		{:else}
+			{placeholder}
+		{/if}
+	</span>
 	<svg
 		class="w-4 h-4 ml-2 opacity-70"
 		fill="none"

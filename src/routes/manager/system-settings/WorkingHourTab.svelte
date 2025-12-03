@@ -138,7 +138,7 @@
 							type="time"
 							name="start"
 							bind:value={workingForm.start}
-							class="w-full rounded border px-2 py-1"
+							class="w-full rounded border px-2 py-1 dark:bg-gray-800 dark:text-white"
 							required
 						/>
 					</label>
@@ -149,7 +149,7 @@
 							type="time"
 							name="end"
 							bind:value={workingForm.end}
-							class="w-full rounded border px-2 py-1"
+							class="w-full rounded border px-2 py-1 dark:bg-gray-800 dark:text-white"
 							required
 						/>
 					</label>

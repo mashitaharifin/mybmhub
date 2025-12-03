@@ -1,0 +1,1 @@
+ALTER TABLE "leave_types" DROP COLUMN "max_days_per_year";

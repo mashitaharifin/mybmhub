@@ -64,6 +64,41 @@
       "when": 1763092580440,
       "tag": "0008_wealthy_ben_urich",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1763966535982,
+      "tag": "0009_thankful_timeslip",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1763976523896,
+      "tag": "0010_chilly_roughhouse",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1764138018725,
+      "tag": "0011_tan_maximus",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1764138167127,
+      "tag": "0012_unusual_mojo",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1764152392534,
+      "tag": "0013_rapid_hitman",
+      "breakpoints": true
     }
   ]
 }

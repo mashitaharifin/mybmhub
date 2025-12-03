@@ -16,3 +16,4 @@ export * from './auditLog';
 export * from './workingPattern';
 export * from './systemSettings';
 export * from './session';
+export * from '../client';

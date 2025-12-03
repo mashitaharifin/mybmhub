@@ -194,7 +194,7 @@
 					</BreadcrumbItem>
 					<BreadcrumbSeparator />
 					<BreadcrumbItem>
-						<BreadcrumbLink href="/profile">My Profile</BreadcrumbLink>
+						<BreadcrumbPage>My Profile</BreadcrumbPage>
 					</BreadcrumbItem>
 					{#if activeTab !== 'profile'}
 						<BreadcrumbSeparator />

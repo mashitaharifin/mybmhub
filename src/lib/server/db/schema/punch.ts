@@ -9,7 +9,7 @@ export const punch = pgTable('punch', {
 		.notNull(),
 	eventType: punchEventEnum('event_type').notNull(),
 	eventTime: timestamp('event_time').notNull(),
-	locationLat: decimal('location_lat', { precision: 10, scale: 6 }), // should've just use geofence ID instead
+	locationLat: decimal('location_lat', { precision: 10, scale: 6 }), 
 	locationLng: decimal('location_lng', { precision: 10, scale: 6 }),
 	accuracyMeters: integer('accuracy_meters'),
 	source: sourceEnum('source').default('Mobile'),

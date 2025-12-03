@@ -1,0 +1,1 @@
+ALTER TABLE "leave_entitlement_rules" ADD COLUMN "is_unlimited" boolean DEFAULT false;

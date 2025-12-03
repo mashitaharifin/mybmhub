@@ -5,19 +5,29 @@ import { eq } from 'drizzle-orm';
 
 export const GET: RequestHandler = async () => {
 	try {
-		const active = await db.select().from(geofenceLocations).where(eq(geofenceLocations.isActive, true));
+		const active = await db
+			.select()
+			.from(geofenceLocations)
+			.where(eq(geofenceLocations.isActive, true));
 
 		if (!active.length) {
-			return new Response(JSON.stringify({ error: 'No active geofence found' }), { status: 404 });
+			return new Response(JSON.stringify({ success: false, error: 'No active geofence found' }), {
+				status: 404,
+				headers: { 'Content-Type': 'application/json' }
+			});
 		}
 
-		return new Response(JSON.stringify(active[0]), {
+		return new Response(JSON.stringify({ success: true, data: active[0] }), {
 			headers: { 'Content-Type': 'application/json' }
 		});
 	} catch (err) {
-		console.error(err);
-		return new Response(JSON.stringify({ error: 'Failed to fetch active geofence' }), {
-			status: 500
-		});
+		console.error('Failed to fetch active geofence', err);
+		return new Response(
+			JSON.stringify({ success: false, error: 'Failed to fetch active geofence' }),
+			{
+				status: 500,
+				headers: { 'Content-Type': 'application/json' }
+			}
+		);
 	}
 };

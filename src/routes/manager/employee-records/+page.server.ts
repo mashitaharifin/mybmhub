@@ -7,6 +7,7 @@ import { auditLogs } from '$lib/server/db/schema/auditLog';
 import { eq, asc, and, ilike } from 'drizzle-orm';
 import { fail, redirect, error } from '@sveltejs/kit';
 import argon2 from 'argon2';
+import { generateLeaveBalanceForEmployee } from '$lib/server/leave/generateBalance';
 import { date } from 'drizzle-orm/mysql-core';
 
 type LogAuditParams = {
@@ -176,6 +177,8 @@ export const actions: Actions = {
 				address
 			})
 			.returning({ id: employees.id });
+
+		await generateLeaveBalanceForEmployee(newEmployee.id);
 
 		const currentUserID = locals.user?.id;
 
