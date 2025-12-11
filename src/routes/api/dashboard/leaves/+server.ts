@@ -31,7 +31,8 @@ export const GET: RequestHandler = async () => {
 			.leftJoin(employees, eq(employees.userId, users.id))
 			.leftJoin(departments, eq(departments.id, employees.departmentId))
 			.leftJoin(leaveTypes, eq(leaveTypes.id, leaveApplications.leaveTypeID))
-			.orderBy(desc(leaveApplications.applicationDate));
+			.orderBy(desc(leaveApplications.applicationDate))
+			.limit(10);
 
 		return new Response(JSON.stringify({ data: leaveData }), {
 			status: 200,

@@ -236,7 +236,7 @@
 			const diff = (start.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
 
 			if (diff < 5) {
-				showAlert('Annual Leave must be applied at least 5 days in advance', 'error');
+				showAlert('Annual Leave must be applied at least 5 days in advance', 'info');
 				return false;
 			}
 		}

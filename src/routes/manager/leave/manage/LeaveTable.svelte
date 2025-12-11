@@ -3,6 +3,7 @@
 	import * as Table from '$lib/components/ui/table';
 	import Button from '$lib/components/ui/button.svelte';
 	import { ChevronLeft, ChevronRight, Check, CircleX, CircleSlash, Eye } from 'lucide-svelte';
+	import { format } from '$lib/utils/formatHelpers';
 
 	export let applications: any[] = [];
 	export let loading = false;
@@ -28,6 +29,11 @@
 			onPageChange(offset + limit);
 		}
 	}
+	
+	function formatDate(dateString: string) {
+		const date = new Date(dateString);
+		return date.toISOString().split('T')[0]; // YYYY-MM-DD format
+	}
 </script>
 
 {#if loading}
@@ -46,6 +52,7 @@
 					<Table.Head class="text-center">Start Date</Table.Head>
 					<Table.Head class="text-center">End Date</Table.Head>
 					<Table.Head class="text-center">Status</Table.Head>
+					<Table.Head class="text-center">Applied Date</Table.Head>
 					<Table.Head class="text-center">Actions</Table.Head>
 				</Table.Row>
 			</Table.Header>
@@ -65,6 +72,9 @@
 							</Table.Cell>
 							<Table.Cell class="text-center">
 								<LeaveStatusBadge status={app.status} />
+							</Table.Cell>
+							<Table.Cell class="text-center">
+								{format.timestamp(app.applicationDate)}
 							</Table.Cell>
 							<Table.Cell>
 								<div class="flex justify-center space-x-1">

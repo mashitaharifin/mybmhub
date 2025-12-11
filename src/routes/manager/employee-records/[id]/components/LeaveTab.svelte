@@ -7,40 +7,6 @@
 </script>
 
 <div class="space-y-6">
-	<!-- Leave Summary -->
-	<Card.Root class="p-2 rounded-3xl border-gray-200 dark:border-gray-700 shadow">
-		<Card.Header>
-			<Card.Title
-				class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2"
-			>
-				<BarChart3 class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-				Leave Summary
-			</Card.Title>
-		</Card.Header>
-
-		<Card.Content>
-			{#if data.summary?.length}
-				<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-					{#each data.summary as item}
-						<div
-							class="flex items-center gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
-						>
-							<ClipboardList class="w-6 h-6 text-blue-600 dark:text-blue-400" />
-							<div>
-								<p class="text-sm text-gray-500">{item.type}</p>
-								<p class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-									{item.used} / {item.quota}
-								</p>
-							</div>
-						</div>
-					{/each}
-				</div>
-			{:else}
-				<p class="text-sm text-gray-500 dark:text-gray-400 p-4">No leave summary data available.</p>
-			{/if}
-		</Card.Content>
-	</Card.Root>
-
 	<!-- Leave Records -->
 	<Card.Root class="p-2 rounded-3xl border-gray-200 dark:border-gray-700 shadow">
 		<Card.Header>

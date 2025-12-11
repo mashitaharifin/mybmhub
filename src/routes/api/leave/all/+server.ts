@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { leaveApplications, employees, leaveTypes, users } from '$lib/server/db/schema';
-import { eq, ilike, and } from 'drizzle-orm';
+import { eq, ilike, and, desc } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 
 export async function GET({ url, locals }) {
@@ -64,6 +64,7 @@ export async function GET({ url, locals }) {
                 requiresDoc: leaveTypes.requiresDoc,
 				docImg: leaveApplications.docImg,
 				status: leaveApplications.status,
+				applicationDate: leaveApplications.applicationDate,
 
 				employeeName: employees.name,
 				leaveTypeName: leaveTypes.typeName,
@@ -89,7 +90,7 @@ export async function GET({ url, locals }) {
 		const applications = await appsWithWhere
 			.limit(limit)
 			.offset(offset)
-			.orderBy(leaveApplications.startDate);
+			.orderBy(desc(leaveApplications.applicationDate));
 
 		return json({ success: true, data: { applications, total } });
 	} catch (err: any) {

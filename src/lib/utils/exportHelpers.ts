@@ -1,12 +1,17 @@
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas';
 
-type LogRow = Record<string, any>;
-
-export async function exportToPDF(
-	logs: LogRow[],
+/**
+ * Export a DOM element to PDF using html2canvas
+ * @param element The DOM element to export
+ * @param filename The filename for the PDF
+ * @param title Optional title to display on top of PDF
+ * @param company Optional company info to display on top
+ */
+export async function exportElementToPDF(
+	element: HTMLElement,
 	filename: string,
-	title: string,
+	title?: string,
 	company?: {
 		logoPath?: string;
 		name?: string;
@@ -17,56 +22,70 @@ export async function exportToPDF(
 		regNo?: string;
 	}
 ) {
-	const doc = new jsPDF({ orientation: 'landscape' });
+	if (!element) throw new Error('No element provided for PDF export');
 
-	// Company header
+	// Use html2canvas to render element as canvas
+	const canvas = await html2canvas(element, {
+		scale: 2, // increase for better resolution
+		useCORS: true // allow cross-origin images
+	});
+
+	const imgData = canvas.toDataURL('image/png');
+
+	// PDF in landscape
+	const pdf = new jsPDF({ orientation: 'landscape' });
+
+	const pageWidth = pdf.internal.pageSize.getWidth();
+	const pageHeight = pdf.internal.pageSize.getHeight();
+
+	// Optionally add company header
+	let yOffset = 10;
 	if (company) {
-		const yStart = 10;
 		if (company.logoPath) {
 			const img = new Image();
 			img.src = company.logoPath;
-			doc.addImage(img, 'PNG', 10, yStart, 30, 30);
+			// Width 30, height 30
+			pdf.addImage(img, 'PNG', 10, yOffset, 30, 30);
 		}
-		doc.setFontSize(16);
-		doc.text(company.name || '', 50, yStart + 10);
-		doc.setFontSize(10);
-		doc.text(`${company.address || ''}, ${company.country || ''}`, 50, yStart + 15);
-		doc.text(`Email: ${company.email || ''} | Phone: ${company.phone || ''}`, 50, yStart + 20);
-		doc.text(`Reg No: ${company.regNo || ''}`, 50, yStart + 25);
-		doc.setLineWidth(0.5);
-		doc.line(10, yStart + 30, 280, yStart + 30);
+		pdf.setFontSize(16);
+		pdf.text(company.name || '', 50, yOffset + 10);
+		pdf.setFontSize(10);
+		pdf.text(`${company.address || ''}, ${company.country || ''}`, 50, yOffset + 15);
+		pdf.text(`Email: ${company.email || ''} | Phone: ${company.phone || ''}`, 50, yOffset + 20);
+		pdf.text(`Reg No: ${company.regNo || ''}`, 50, yOffset + 25);
+		pdf.setLineWidth(0.5);
+		pdf.line(10, yOffset + 30, pageWidth - 10, yOffset + 30);
+
+		yOffset += 35;
 	}
 
-	// Export title
-	doc.setFontSize(12);
-	doc.text(title, 10, 45);
-
-	// Table content
-	if (logs.length) {
-		const columns = Object.keys(logs[0]).map((k) => ({ header: k, dataKey: k }));
-		autoTable(doc, {
-			startY: 50,
-			head: [columns.map((c) => c.header)],
-			body: logs.map((row: LogRow) => columns.map((c) => row[c.dataKey])),
-			styles: { fontSize: 8 }
-		});
+	// Optionally add title
+	if (title) {
+		pdf.setFontSize(12);
+		pdf.text(title, 10, yOffset);
+		yOffset += 10;
 	}
 
-	// Footer with export date
-	doc.setFontSize(8);
-	doc.setTextColor(120);
-	doc.text(`Printed at: ${new Date().toLocaleString()}`, 10, doc.internal.pageSize.height - 10);
+	// Add the rendered element image to PDF
+	const imgProps = pdf.getImageProperties(imgData);
+	const pdfWidth = pageWidth - 20; // leave some margin
+	const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
-	doc.save(filename);
+	pdf.addImage(imgData, 'PNG', 10, yOffset, pdfWidth, pdfHeight);
+
+	// Footer with printed date
+	pdf.setFontSize(8);
+	pdf.setTextColor(120);
+	pdf.text(`Printed at: ${new Date().toLocaleString()}`, 10, pageHeight - 10);
+
+	// Save PDF
+	pdf.save(filename);
 }
 
-
-export async function fetchExcelExport(
-	logs: any[], 
-	title: string, 
-	company?: any 
-) {
+/**
+ * Legacy wrapper to keep similar interface
+ */
+export async function fetchExcelExport(element: HTMLElement, title: string, company?: any) {
 	const filename = `${title}.pdf`;
-	await exportToPDF(logs, filename, title, company);
+	await exportElementToPDF(element, filename, title, company);
 }
-

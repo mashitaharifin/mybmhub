@@ -78,7 +78,7 @@ export async function generateLeaveBalanceForEmployee(employeeId: number) {
 			year: currentYear,
 			initialCarryForward: carryForwardDays,
 			totalEntitlement: total,
-			daysTaken: '0',
+			daysTaken: '0.00',
 			remainingBalance: total.toString()
 		});
 

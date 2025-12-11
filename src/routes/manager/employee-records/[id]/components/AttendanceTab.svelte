@@ -2,7 +2,6 @@
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
 	import { CalendarDays, CalendarCheck, UserCheck, UserX, Clock, Printer, ChevronLeft, ChevronRight } from 'lucide-svelte';
-	import { exportToPDF } from '$lib/utils/exportHelpers';
 	export let data;
 
 	// Pagination
@@ -151,9 +150,11 @@
 						>
 							<ChevronRight class="w-4 h-4" />
 						</button>
-						<button on:click={() => exportToPDF(sortedRecords, 'Attendance.pdf', 'Attendance Records')}>
+						<!-- 
+						<button on:click={() => exportElementToPDF(sortedRecords, 'Attendance.pdf', 'Attendance Records')}>
 							<Printer class="w-4 h-4" />
 						</button>
+						-->
 					</div>
 				</div>
 			</div>

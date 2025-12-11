@@ -22,7 +22,6 @@
 		CalendarDays,
 		CalendarCheck
 	} from 'lucide-svelte';
-	import { exportToPDF } from '$lib/utils/exportHelpers';
 
 	let alertMessage: string | null = null;
 	let alertVariant: 'success' | 'error' | 'info' = 'info';
@@ -31,8 +30,6 @@
 	function showAlert(message: string, variant: 'success' | 'error' | 'info' = 'info') {
 		alertMessage = message;
 		alertVariant = variant;
-		if (t) clearTimeout(t);
-		t = setTimeout(() => (alertMessage = null), 9000);
 	}
 
 	// --- Quick attendance / today's summary ---
@@ -65,12 +62,17 @@
 
 	// --- Attendance settings ---
 	let attendanceSettings: any = {
-		shiftStart: '09:00',
-		shiftEnd: '18:00',
+		shiftStart: '11:00',
+		shiftEnd: '19:00',
 		requiredHours: 8,
 		graceMinutes: 10,
 		lunchBreakMins: 60
 	};
+
+	// --- Auto punch-out reason modal ---
+	let showReasonModal = false;
+	let pendingRecordId: number | null = null;
+	let reasonText = '';
 
 	// --- Clock ---
 	function updateClock() {
@@ -103,6 +105,16 @@
 			const data = await res.json();
 			if (data?.success && data.data) {
 				quick = { ...data.data, workedHours: Number(data.data.workedHours ?? 0) };
+
+				// Check if reason is required (inside the success block)
+				if (data.autoPunchedOutReasonRequired && data.id) {
+					pendingRecordId = data.id;
+					showReasonModal = true;
+					showAlert(
+						"You must submit a reason for yesterday's auto punch-out before punching in.",
+						'info'
+					);
+				}
 			}
 		} catch (err) {
 			console.error('Failed to load quick attendance', err);
@@ -147,6 +159,44 @@
 			if (data?.success && Array.isArray(data.records)) todayPunches = data.records;
 		} catch (err) {
 			todayPunches = [];
+		}
+	}
+
+	// --- Submit auto punch reason ---
+	async function submitAutoPunchReason(recordId: number, reason: string) {
+		try {
+			const res = await fetch('/api/attendance/submit-auto-punch-reason', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ recordId, reason })
+			});
+			const data = await res.json();
+			if (!data.success) {
+				showAlert(data.error || 'Failed to submit reason', 'error');
+				return false;
+			}
+			return true;
+		} catch (err) {
+			showAlert('Failed to submit reason', 'error');
+			return false;
+		}
+	}
+
+	async function handleReasonSubmit() {
+		if (!reasonText.trim()) {
+			showAlert('Please enter a reason.', 'error');
+			return;
+		}
+
+		const ok = await submitAutoPunchReason(pendingRecordId!, reasonText);
+		if (ok) {
+			showAlert('Reason Submitted Successfully! You can now punch in for today.', 'success');
+
+			showReasonModal = false;
+			reasonText = '';
+			pendingRecordId = null;
+			await loadQuickAttendance(); // refresh UI
+			showAlert('Reason submitted successfully. You can now punch in.', 'success');
 		}
 	}
 
@@ -199,6 +249,12 @@
 	// --- Punch handler ---
 	let punchProcessing = false;
 	async function handlePunch(actionType: 'IN' | 'OUT') {
+		// ⭐ Block punch in if reason modal is open
+		if (showReasonModal) {
+			showAlert('You must submit your auto punch-out reason first.', 'info');
+			return;
+		}
+
 		if (punchProcessing) return;
 		if (!navigator.geolocation) {
 			showAlert('Geolocation not supported', 'error');
@@ -220,12 +276,42 @@
 					});
 					const data = await res.json();
 					if (data?.success) {
-						showAlert(data.message || 'Punch successful', 'success');
+						// ⭐ Check if punch is blocked due to required reason
+						if (data.autoPunchedOutReasonRequired && data.id) {
+							pendingRecordId = data.id;
+							showReasonModal = true;
+							showAlert(
+								data.message || "Please submit reason for yesterday's auto punch-out.",
+								'info'
+							);
+							punchProcessing = false;
+							return;
+						}
+						// --- Punch timeliness message ---
+						let statusMessage = '';
+						if (data.punchTimeliness) {
+							switch (data.punchTimeliness) {
+								case 'early':
+									statusMessage = 'You punched in early! 🎉🌟';
+									break;
+								case 'on-time':
+									statusMessage = 'You are on time! ⏰👍';
+									break;
+								case 'late':
+									statusMessage = 'You are late! ⚠️😬';
+									break;
+							}
+						}
+
+						// Show message using showAlert()
+						showAlert(`${data.message}${statusMessage ? ' — ' + statusMessage : ''}`, 'success');
 						await loadQuickAttendance();
 						await loadAttendanceSummary();
 						await loadActiveGeofence();
 						await loadTodayPunches();
-					} else showAlert(data?.error || 'Punch failed', 'error');
+					} else {
+						showAlert(data?.error || 'Punch failed', 'error');
+					}
 				} catch (err) {
 					showAlert('Failed to punch', 'error');
 				} finally {
@@ -244,17 +330,35 @@
 		return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 	}
 
-	function getStatusBadge(status: string) {
+	function getStatusBadge(
+		status: string,
+		autoPunchedOut: boolean = false,
+		onLeave: boolean = false
+	) {
 		const s = (status ?? '').toLowerCase();
 
+		// Check for leave status FIRST (highest priority)
+		if (onLeave || s.includes('leave')) {
+			if (s.includes('half day')) {
+				return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+			}
+			return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+		}
+
+		// Check for auto-punch
+		if (autoPunchedOut) {
+			return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100';
+		}
+
+		// Regular statuses
 		switch (s) {
 			case 'present':
-			case 'in':
-			case 'out':
-				return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
+			case 'complete':
+				return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
 			case 'late':
 				return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500 dark:text-yellow-100';
 			case 'absent':
+			case 'incomplete':
 				return 'bg-red-200 text-red-800 dark:bg-red-600 dark:text-red-100';
 			default:
 				return 'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-100';
@@ -293,7 +397,6 @@
 	}
 
 	onMount(async () => {
-		await loadQuickAttendance();
 		updateClock();
 		timer = setInterval(updateClock, 1000);
 		await loadCompanyProfile(); // Cleaner call
@@ -448,11 +551,15 @@
 							<div class="text-sm text-gray-500 dark:text-gray-400 text-right">
 								Completed for today
 							</div>
+						{:else if showReasonModal}
+							<div class="text-sm text-yellow-600 dark:text-yellow-400 text-right">
+								Reason Required
+							</div>
 						{:else}
 							<button
-								on:click={() => handlePunch(quick.checkInTime ? 'OUT' : 'IN')}
+								on:click={() => handlePunch(punchButtonType())}
 								disabled={punchProcessing}
-								class="text-sm font-medium px-3 py-1.5 rounded-2xl border text-red-600 bg-white hover:bg-red-500 hover:text-white dark:bg-gray-700 dark:text-white dark:hover:bg-red-800 transition"
+								class="text-sm font-medium px-3 py-1.5 rounded-2xl border text-red-600 bg-white hover:bg-red-500 hover:text-white dark:bg-gray-700 dark:text-white dark:hover:bg-red-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
 							>
 								{punchProcessing ? 'Processing...' : quick.checkInTime ? 'Punch Out' : 'Punch In'}
 							</button>
@@ -477,7 +584,7 @@
 					<div class="flex items-center gap-3 p-4 rounded-lg bg-blue-50 dark:bg-blue-900">
 						<CalendarCheck class="w-6 h-6 text-blue-600 dark:text-blue-400" />
 						<div>
-							<p class="text-sm text-gray-500 dark:text-white">Total Days</p>
+							<p class="text-sm text-gray-500 dark:text-white">Total Working Days</p>
 							<p class="text-lg font-semibold text-blue-700 dark:text-blue-300">
 								{summaryData.summary.totalDays}
 							</p>
@@ -578,12 +685,75 @@
 										>
 										<Table.Cell>
 											<span
-												class={`px-2 py-1 rounded-xl text-xs ${getStatusBadge(r.status ?? (r.checkInTime ? 'Present' : 'Absent'))}`}
+												class={`px-2 py-1 rounded-xl text-xs ${getStatusBadge(
+													r.status ?? (r.checkInTime ? 'Present' : 'Absent'),
+													r.autoPunchedOut,
+													r.onLeave
+												)}`}
 											>
-												{r.status ?? (r.checkInTime ? 'Present' : 'Absent')}
+												{#if r.onLeave}
+													{r.status}
+												{:else if r.autoPunchedOut}
+													Auto-{r.status?.replace('Present', 'Complete') ||
+														(r.checkInTime ? 'Complete' : 'Absent')}
+												{:else}
+													{r.status ?? (r.checkInTime ? 'Present' : 'Absent')}
+												{/if}
 											</span>
 										</Table.Cell>
-										<Table.Cell>{r.remarks ?? '-'}</Table.Cell>
+
+										<Table.Cell>
+											<!-- Show auto-punch reason if it exists -->
+											{#if r.autoPunchedOutReason}
+												<div class="max-w-xs">
+													<div class="flex items-center gap-1 mb-1">
+														<div class="w-2 h-2 bg-yellow-500 rounded-full"></div>
+														<span class="text-xs font-medium text-yellow-700 dark:text-yellow-300">
+															Auto-punched
+														</span>
+													</div>
+													<div
+														class="text-xs text-gray-700 dark:text-gray-300 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded border border-yellow-100 dark:border-yellow-800"
+													>
+														{r.autoPunchedOutReason}
+													</div>
+												</div>
+											{:else if r.onLeave}
+												<!-- Show leave information -->
+												<div class="max-w-xs">
+													<div class="flex items-center gap-1 mb-1">
+														<div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+														<span class="text-xs font-medium text-blue-700 dark:text-blue-300">
+															On Leave
+														</span>
+													</div>
+													{#if r.halfDayLeave}
+														<div class="text-xs text-blue-600 dark:text-blue-400 italic">
+															Half Day ({r.leaveSession || 'AM'} session)
+														</div>
+													{/if}
+												</div>
+											{:else if r.autoPunchedOut && r.autoPunchedOutReasonRequired}
+												<div class="max-w-xs">
+													<div class="flex items-center gap-1 mb-1">
+														<div class="w-2 h-2 bg-red-500 rounded-full"></div>
+														<span class="text-xs font-medium text-red-700 dark:text-red-300">
+															Reason Required
+														</span>
+													</div>
+													<div class="text-xs text-red-600 dark:text-red-400 italic">
+														Please submit auto-punch reason
+													</div>
+												</div>
+											{:else if r.remarks}
+												<!-- Show other remarks -->
+												<div class="max-w-xs text-xs text-gray-700 dark:text-gray-300">
+													{r.remarks}
+												</div>
+											{:else}
+												<span class="text-gray-400 text-xs">-</span>
+											{/if}
+										</Table.Cell>
 									</Table.Row>
 								{/each}
 							{/if}
@@ -611,17 +781,6 @@
 							>
 								<ChevronRight class="w-4 h-4" />
 							</Button>
-							<Button
-								title="Export PDF"
-								on:click={() =>
-									exportToPDF(
-										summaryData.records,
-										'Attendance_Last_30_Days.pdf',
-										'Last 30 Days Attendance'
-									)}
-							>
-								<Printer />
-							</Button>
 						</div>
 					</div>
 				</div>
@@ -629,3 +788,44 @@
 		</Card.Root>
 	</Card.Content>
 </Card.Root>
+
+<!-- ⭐ NEW: Auto Punch Reason Modal -->
+{#if showReasonModal}
+	<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+			<h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-3">
+				⚠️ Explanation Required
+			</h3>
+			<p class="text-gray-600 dark:text-gray-300 mb-4">
+				You were auto-punched out yesterday. Please explain why you didn't punch out manually:
+			</p>
+
+			<textarea
+				bind:value={reasonText}
+				class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg mb-4 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+				placeholder="E.g., forgot, emergency, system issue..."
+				rows="3"
+			></textarea>
+
+			<div class="flex justify-end gap-3">
+				<button
+					on:click={() => {
+						showReasonModal = false;
+						reasonText = '';
+						pendingRecordId = null;
+					}}
+					class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+				>
+					Cancel
+				</button>
+				<button
+					on:click={handleReasonSubmit}
+					disabled={!reasonText.trim()}
+					class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
+				>
+					Submit Reason
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}

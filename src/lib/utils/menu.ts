@@ -14,14 +14,14 @@ import {
 
 export const MANAGER_MENU = [
 	{ name: 'Dashboard', icon: LayoutDashboard, path: '/manager/dashboard' },
-	{ name: 'Profile', icon: User, path: '/manager/profile' },
+	{ name: 'Profile', icon: User, path: '/profile' },
 	{
 		name: 'Leave',
 		icon: Plane,
-		path: '/manager/leave',
+		path: '/manager/leave/balance',
 		submenu: [
+			{ name: 'Employee Leave Management', path: '/manager/leave/manage' },
 			{ name: 'Employee Leave Balance', path: '/manager/leave/balance' },
-			{ name: 'Manage Leave Request', path: '/manager/leave/manage' }
 		]
 	},
 	{ name: 'Attendance', icon: CalendarCheck, path: '/manager/attendance' },
@@ -35,14 +35,14 @@ export const MANAGER_MENU = [
 
 export const EMPLOYEE_MENU = [
 	{ name: 'Dashboard', icon: LayoutDashboard, path: '/employee/dashboard' },
-	{ name: 'Profile', icon: User, path: '/employee/profile' },
+	{ name: 'Profile', icon: User, path: '/profile' },
 	{
 		name: 'Leave',
 		icon: Plane,
-		path: '/employee/leave',
+		path: '/employee/leave/apply',
 		submenu: [
-			{ name: 'Leave Balance', path: '/employee/leave/balance' },
-			{ name: 'Apply for Leave', path: '/employee/leave/apply' }
+			{ name: 'Leave Application', path: '/employee/leave/apply' },
+			{ name: 'Leave Balance', path: '/employee/leave/balance' }
 		]
 	},
 	{ name: 'Attendance', icon: CalendarCheck, path: '/employee/attendance'},

@@ -3,7 +3,8 @@ import type {
 	TeamMember,
 	LeaveRequest,
 	CalendarEvent,
-	ManagerProfile
+	ManagerProfile,
+	TeamActivity
 } from '$lib/types/dashboard';
 
 // --- Generic fetch helper ---
@@ -11,8 +12,14 @@ async function fetchJSON<T>(url: string, fallback: T): Promise<T> {
 	try {
 		const res = await fetch(url);
 		if (!res.ok) throw new Error(`Failed to fetch ${url}`);
-		const data = await res.json();
-		return data ?? fallback;
+		const json = await res.json();
+
+		// Check if response has a data property
+		if (json && typeof json === 'object' && 'data' in json) {
+			return json.data ?? fallback;
+		}
+
+		return json ?? fallback;
 	} catch (err) {
 		console.error(err);
 		return fallback;
@@ -42,6 +49,9 @@ export async function getMetrics(): Promise<MetricsResponse> {
 	};
 }
 
+export const getTeamActivities = () =>
+	fetchJSON<TeamActivity[]>('/api/dashboard/teamActivities', []);
+
 export const getTeamAttendance = () => fetchJSON<TeamMember[]>('/api/dashboard/attendance', []);
 
 export const getPendingLeaves = () => fetchJSON<LeaveRequest[]>('/api/dashboard/leaves', []);
@@ -57,10 +67,7 @@ export async function getManagerProfile(): Promise<ManagerProfile> {
 		avatarUrl: ''
 	};
 
-	const res = await fetchJSON<{ success: boolean; data: ManagerProfile }>(
-		'/api/dashboard/profile',
-		{ success: false, data: fallback }
-	);
+	const data = await fetchJSON<ManagerProfile>('/api/dashboard/profile', fallback);
 
-	return res.success ? res.data : fallback;
+	return data;
 }

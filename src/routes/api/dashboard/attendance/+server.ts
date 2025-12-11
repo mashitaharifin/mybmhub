@@ -14,7 +14,6 @@ export const GET: RequestHandler = async () => {
 				checkInTime: attendance.checkInTime,
 				checkOutTime: attendance.checkOutTime,
 				totalHours: attendance.totalHours,
-				breakHours: attendance.breakHours,
 				workedHours: attendance.workedHours
 			})
 			.from(attendance)

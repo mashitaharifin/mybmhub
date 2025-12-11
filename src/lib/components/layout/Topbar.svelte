@@ -2,13 +2,40 @@
 	import { Moon, Sun, Bell, ChevronDown } from 'lucide-svelte';
 	import { theme, toggleTheme } from '$lib/stores/theme';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
+	import NotificationPopover from '$lib/components/ui/NotificationPopover.svelte';
 
 	export let user: any;
 	export let isCollapsed: boolean;
 
 	let showUserMenu = false;
+	let notificationCount = 0; // Add this
+	let pollInterval: NodeJS.Timeout; // Add this
+
+	// Fetch notification count
+	async function fetchNotificationCount() {
+		try {
+			const res = await fetch('/notifications/count');
+			const data = await res.json();
+			if (data.success) {
+				notificationCount = data.count;
+			}
+		} catch (err) {
+			console.error('Failed to fetch notification count', err);
+		}
+	}
+
+	// Listen for custom events from NotificationPopover
+	function handleNotificationEvent(event: CustomEvent) {
+		if (event.detail.type === 'new-notification') {
+			notificationCount++;
+		} else if (event.detail.type === 'mark-read') {
+			notificationCount = Math.max(0, notificationCount - 1);
+		} else if (event.detail.type === 'mark-all-read') {
+			notificationCount = 0;
+		}
+	}
 
 	const handleNotifications = () => {
 		console.log('Notifications clicked');
@@ -18,6 +45,24 @@
 	onMount(() => {
 		if (browser) {
 			document.documentElement.classList.toggle('dark', $theme === 'dark');
+			
+			fetchNotificationCount(); // Fetch initial notification count
+			
+			// Poll for updates every 30 seconds (fallback for SSE issues)
+			pollInterval = setInterval(fetchNotificationCount, 30000);
+			
+			// Listen for events from NotificationPopover
+			window.addEventListener('notification-update', handleNotificationEvent as EventListener);
+		}
+	});
+
+	// Cleanup
+	onDestroy(() => {
+		if (browser && pollInterval) {
+			clearInterval(pollInterval);
+		}
+		if (browser) {
+			window.removeEventListener('notification-update', handleNotificationEvent as EventListener);
 		}
 	});
 
@@ -27,12 +72,12 @@
 	}
 
 	const logout = async () => {
-    await fetch('/auth/logout', {
-        method: 'POST',
-        body: new FormData() // empty form-encoded data
-    });
-    window.location.href = '/auth/login';
-};
+		await fetch('/auth/logout', {
+			method: 'POST',
+			body: new FormData() // empty form-encoded data
+		});
+		window.location.href = '/auth/login';
+	};
 </script>
 
 <header
@@ -59,18 +104,19 @@
 			{/if}
 		</button>
 
-		<!-- Notifications -->
-		<button
-			class="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-			on:click={handleNotifications}
-		>
-			<Bell class="w-6 h-6 text-gray-500 dark:text-gray-400" />
-			{#if user?.notificationCount > 0}
-				<span class="absolute -top-1 -right-1 text-xs bg-red-600 text-white rounded-full px-1">
-					{user?.notificationCount || 0}
-				</span>
-			{/if}
-		</button>
+		<NotificationPopover>
+			<button
+				slot="trigger"
+				class="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+			>
+				<Bell class="w-6 h-6 text-gray-500 dark:text-gray-400" />
+				{#if notificationCount > 0}
+					<span class="absolute -top-1 -right-1 text-xs bg-red-600 text-white rounded-full px-1 min-w-[1.25rem] h-5 flex items-center justify-center">
+						{notificationCount > 99 ? '99+' : notificationCount}
+					</span>
+				{/if}
+			</button>
+		</NotificationPopover>
 
 		<!-- User Profile -->
 		<div class="relative">

@@ -13,20 +13,17 @@
 		BreadcrumbPage
 	} from '$lib/components/ui/breadcrumb';
 	import { onMount, onDestroy } from 'svelte';
-	import { exportToPDF } from '$lib/utils/exportHelpers';
+	import { exportElementToPDF  } from '$lib/utils/exportHelpers';
 
-	/* --------------------------------------------------
-	    FILTER STATE
-	---------------------------------------------------- */
+	
+	// FILTER STATE
 	let filters = {
 		month: new Date().getMonth() + 1,
 		year: new Date().getFullYear(),
 		employeeQuery: ''
 	};
 
-	/* --------------------------------------------------
-	    ALERT HANDLING
-	---------------------------------------------------- */
+	//ALERT HANDLING
 	let alertMessage: string | null = null;
 	let alertVariant: 'success' | 'error' | 'info' = 'info';
 	let t: NodeJS.Timeout | null = null;
@@ -40,9 +37,7 @@
 		t = setTimeout(() => (alertMessage = null), 9000);
 	}
 
-	/* --------------------------------------------------
-	    FILTER HANDLERS
-	---------------------------------------------------- */
+	// FILTER HANDLERS
 	function handleApply(e: CustomEvent) {
 		filters = { ...e.detail };
 		// Dispatch to AttendanceTable
@@ -51,9 +46,7 @@
 		showAlert('Filters applied', 'success');
 	}
 
-	/* --------------------------------------------------
-	    EXPORT FUNCTIONALITY
-	---------------------------------------------------- */
+	// EXPORT FUNCTIONALITY
 	let company: any = {};
 
 	async function loadCompanyProfile() {
@@ -67,68 +60,30 @@
 	}
 
 	async function handleExportPDF(e: CustomEvent) {
-		try {
-			showAlert('Preparing PDF export...', 'info');
-			
-			// Fetch attendance data with current filters
-			const payload = {
-				month: filters.month,
-				year: filters.year,
-				employeeQuery: filters.employeeQuery
-			};
+	try {
+		showAlert('Preparing PDF export...', 'info');
 
-			const res = await fetch('./attendance/list', {
-				method: 'POST',
-				body: JSON.stringify(payload),
-				headers: { 'Content-Type': 'application/json' }
-			});
-
-			if (!res.ok) {
-				throw new Error('Failed to fetch attendance data');
-			}
-
-			const data = await res.json();
-			
-			if (!data.records || data.records.length === 0) {
-				showAlert('No records found to export', 'info');
-				return;
-			}
-
-			// Prepare data for export
-			const exportData = data.records.map((record: any, index: number) => ({
-				'#': index + 1,
-				'Employee': record.employeeName,
-				'Date': record.summaryDate,
-				'Check-In': record.checkInTime ? new Date(record.checkInTime).toLocaleTimeString() : '—',
-				'Check-Out': record.checkOutTime ? new Date(record.checkOutTime).toLocaleTimeString() : '—',
-				'Hours': record.workedHours ?? '—',
-				'Status': record.status,
-				'Duration': record.durationStatus || '—',
-				'Location In': record.checkInLocation?.locationName || 'Outside Geofence',
-				'Location Out': record.checkOutLocation?.locationName || 'Outside Geofence',
-				'Reason': record.reason || '—',
-				'Remarks': record.remarks || '—'
-			}));
-
-			// Generate filename with date range
-			const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-			const monthName = monthNames[filters.month - 1];
-			const filename = `Attendance_Records_${monthName}_${filters.year}.pdf`;
-			const title = `Attendance Records - ${monthName} ${filters.year}`;
-
-			// Add filter info to title if employee search is used
-			const subtitle = filters.employeeQuery 
-				? `Filtered by: "${filters.employeeQuery}"`
-				: 'All Employees';
-
-			await exportToPDF(exportData, filename, title, company);
-			showAlert('PDF exported successfully!', 'success');
-			
-		} catch (error) {
-			console.error('Export error:', error);
-			showAlert('Failed to export PDF', 'error');
+		// Grab table element
+		const tableEl = document.querySelector('#attendance-table') as HTMLElement;
+		if (!tableEl) {
+			showAlert('Table not found', 'error');
+			return;
 		}
+
+		// Generate filename and title
+		const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+		const monthName = monthNames[filters.month - 1];
+		const filename = `Attendance_Records_${monthName}_${filters.year}.pdf`;
+		const title = `Attendance Records - ${monthName} ${filters.year}`;
+
+		await exportElementToPDF(tableEl, filename, title, company);
+		showAlert('PDF exported successfully!', 'success');
+	} catch (error) {
+		console.error('Export error:', error);
+		showAlert('Failed to export PDF', 'error');
 	}
+}
+
 
 	onMount(async () => {
 		await loadCompanyProfile();

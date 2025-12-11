@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Button from '$lib/components/ui/button.svelte';
+	import * as Alert from '$lib/components/ui/alert';
 	import { X } from 'lucide-svelte';
 
 	export let config: {
@@ -38,37 +39,42 @@
 		</div>
 
 		<div class="space-y-4">
-			<!-- Message -->
-			<p class="text-gray-600 dark:text-gray-300">{config.message}</p>
+			<!-- Message - Show as alert for reject, normal text for others -->
+			{#if config.type === 'reject' && config.requiresInput}
+				<Alert.Root variant="info">
+					<Alert.Title>Information</Alert.Title>
+					<Alert.Description>{config.message}</Alert.Description>
+				</Alert.Root>
+			{:else}
+				<p class="text-gray-600 dark:text-gray-300">{config.message}</p>
+			{/if}
 
 			<!-- Input for reject reason -->
 			{#if config.type === 'reject' && config.requiresInput}
-				<div>
+				<div class="mt-4">
 					<!-- svelte-ignore a11y_label_has_associated_control -->
 					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
 						Reason for rejection
 					</label>
 					<textarea
 						bind:value={rejectReason}
-						class="w-full border border-gray-300 dark:border-gray-600 rounded p-3 text-sm dark:bg-gray-700 dark:text-gray-100"
+						class="w-full border border-gray-300 dark:border-gray-600 rounded p-3 text-sm dark:bg-gray-700 dark:text-gray-100
+		   focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors"
 						rows="4"
-						placeholder="Enter reason for rejection..."
+						placeholder="Enter reason for rejection"
 					></textarea>
 				</div>
 			{/if}
 
 			<!-- Buttons -->
-			<div class="flex justify-end space-x-3">
-				<Button variant="outline" on:click={onCancel}>
-					Cancel
-				</Button>
+			<div class="flex justify-end space-x-3 pt-4">
+				<Button variant="outline" on:click={onCancel}>Cancel</Button>
 				<Button
 					variant={config.type === 'reject' ? 'destructive' : 'default'}
 					on:click={handleConfirm}
 					disabled={config.type === 'reject' && config.requiresInput && !rejectReason.trim()}
 				>
-					{config.type === 'approve' ? 'Approve' : 
-					 config.type === 'cancel' ? 'Cancel' : 'Reject'}
+					{config.type === 'approve' ? 'Approve' : config.type === 'cancel' ? 'Cancel' : 'Reject'}
 				</Button>
 			</div>
 		</div>

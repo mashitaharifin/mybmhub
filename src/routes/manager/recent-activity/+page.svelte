@@ -14,9 +14,8 @@
 	} from '$lib/components/ui/breadcrumb';
 	import * as Alert from '$lib/components/ui/alert';
 	import { RefreshCcw, ChevronLeft, ChevronRight, Printer } from 'lucide-svelte';
-	import { format } from '$lib/utils/formatHelpers';	
-	import { exportToPDF } from '$lib/utils/exportHelpers';
-
+	import { format } from '$lib/utils/formatHelpers';
+	import { exportElementToPDF } from '$lib/utils/exportHelpers';
 
 	let logs: any[] = [];
 	let alertMessage: string | null = null;
@@ -123,17 +122,25 @@
 			filterText += ' from ' + (dateFrom || '-') + ' to ' + (dateTo || '-');
 		}
 
-		const logsToExport = logs;
+		// get DOM element to export
+		const tableElement = document.getElementById('recent-activity-table');
+		if (!tableElement) {
+			showAlert('Table not found for export.', 'error');
+			return;
+		}
 
+		// build company header values
 		let companyToExport = { ...company };
+		if (company.logoPath) {
+			companyToExport.logoPath = await loadImageAsDataURL(company.logoPath);
+		}
 
-    	// Convert logo to base64 if exists
-    	if (company.logoPath) {
-       		companyToExport.logoPath = await loadImageAsDataURL(company.logoPath);
-    	}
-
-		await exportToPDF(logsToExport, `${filterText}.pdf`, filterText, companyToExport);
-
+		await exportElementToPDF(
+			tableElement,
+			`${filterText}.pdf`,
+			filterText, // title
+			company // company info
+		);
 	}
 
 	function toggleRow(index: number) {
@@ -168,22 +175,55 @@
 	}
 
 	const actionColorMap: { category: string; color: string; description: string }[] = [
-		{ category: 'punch', color: 'bg-green-400 dark:bg-green-600', description: 'Punch In/Out' },
 		{
-			category: 'profile-update',
-			color: 'bg-blue-400 dark:bg-blue-600',
-			description: 'Profile / Password / Update'
+			category: 'punch',
+			color:
+				'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800',
+			description: 'Punch In/Out'
 		},
-		{ category: 'default', color: 'bg-gray-400 dark:bg-gray-600', description: 'Other / System' }
+		{
+			category: 'profile-password',
+			color:
+				'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800',
+			description: 'Profile/Password'
+		},
+		{
+			category: 'leave',
+			color:
+				'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800',
+			description: 'Leave Applications & Management'
+		},
+		{
+			category: 'default',
+			color:
+				'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700',
+			description: 'Other / System'
+		}
 	];
 
 	function getActionColor(action: string | undefined) {
 		if (!action) return actionColorMap.find((c) => c.category === 'default')?.color;
+
 		const lower = action.toLowerCase();
+
 		if (lower.includes('punch')) return actionColorMap[0].color;
-		if (lower.includes('profile') || lower.includes('update') || lower.includes('password'))
-			return actionColorMap[1].color;
-		return actionColorMap[2].color;
+
+		if (lower.includes('profile') || lower.includes('password')) return actionColorMap[1].color;
+
+		// New: Leave-related actions
+		if (
+			lower.includes('leave') ||
+			lower.includes('apply') ||
+			lower.includes('approve') ||
+			lower.includes('reject') ||
+			lower.includes('cancel') ||
+			lower.includes('annual') ||
+			lower.includes('medical') ||
+			lower.includes('emergency')
+		)
+			return actionColorMap[2].color;
+
+		return actionColorMap[3].color; // Default
 	}
 
 	let company: {
@@ -260,7 +300,7 @@
 				<label for="show" class="text-gray-700 dark:text-gray-300">View</label>
 				<select
 					id="show"
-					class="rounded-lg border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
+					class="text-sm rounded-lg border border-gray-300 bg-white p-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-red-500 outline-none transition min-w-[140px]"
 					on:change={toggleShowAll}
 				>
 					<option value={false}>My Logs</option>
@@ -276,7 +316,7 @@
 						id="employee"
 						bind:value={employeeID}
 						on:change={loadLogs}
-						class="rounded-lg border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
+						class="text-sm rounded-lg border border-gray-300 bg-white p-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-red-500 outline-none transition min-w-[140px]"
 					>
 						<option value="">All</option>
 						{#each employees as e}
@@ -293,7 +333,7 @@
 					id="search"
 					placeholder="e.g., Punch In/Out"
 					bind:value={searchKeyword}
-					class="text-sm rounded-lg border border-gray-300 bg-white px-2 py-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
+					class="text-sm rounded-lg border border-gray-300 bg-white p-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-red-500 outline-none transition min-w-[140px]"
 				/>
 			</div>
 
@@ -304,7 +344,7 @@
 					id="dateFrom"
 					type="date"
 					bind:value={dateFrom}
-					class="text-sm rounded-lg border border-gray-300 bg-white px-2 py-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
+					class="text-sm rounded-lg border border-gray-300 bg-white p-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-red-500 outline-none transition min-w-[140px]"
 				/>
 			</div>
 
@@ -315,13 +355,13 @@
 					id="dateTo"
 					type="date"
 					bind:value={dateTo}
-					class="text-sm rounded-lg border border-gray-300 bg-white px-2 py-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
+					class="text-sm rounded-lg border border-gray-300 bg-white p-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-red-500 outline-none transition min-w-[140px]"
 				/>
 			</div>
 
 			<div class="flex gap-2">
 				<Button on:click={handleRefresh} title="Refresh"><RefreshCcw class="w-4 h-4" /></Button>
-				
+
 				<Button on:click={() => handleExport()} title="Export PDF">
 					<Printer class="w-4 h-4" />
 				</Button>
@@ -340,7 +380,7 @@
 
 		<!-- Logs Table -->
 		<div class="overflow-x-auto">
-			<Table.Root>
+			<Table.Root id="recent-activity-table">
 				<Table.Header>
 					<Table.Row>
 						<Table.Head class="w-[50px]">#</Table.Head>
@@ -360,9 +400,7 @@
 
 								<!-- Action Badge -->
 								<Table.Cell>
-									<span
-										class={`px-2 py-1 rounded-xl text-white text-xs ${getActionColor(log.action)}`}
-									>
+									<span class={`px-2 py-1 rounded-xl text-xs ${getActionColor(log.action)}`}>
 										{log.action}
 									</span>
 								</Table.Cell>

@@ -16,17 +16,36 @@ export type MetricsResponse = {
 };
 
 export type TeamMember = {
-	name: string;
-	status: 'Present' | 'Absent' | 'Late' | 'On Leave';
-	hoursWorked: number;
+	id: number;
+	employeeName: string; // Changed from 'name' to match API
+	departmentName?: string; // Changed from 'department'
+	summaryDate: string;
+	checkInTime: string | null;
+	checkOutTime: string | null;
+	totalHours: string | null;
+	workedHours: string | null;
+	// Add computed properties for display
+	name?: string; // For backward compatibility
+	status?: 'Present' | 'Late' | 'Absent' | 'On Leave';
+	hoursWorked?: string;
 };
 
 export type LeaveRequest = {
-	employee: string;
-	type: string;
-	days: number;
-	status: 'Pending' | 'Approved' | 'Rejected';
-	date: string;
+	id: number;
+	employeeName: string; // Changed from 'employee' to match API
+	departmentName?: string; // Changed from 'department'
+	leaveType: string; // Changed from 'type' to match API
+	startDate: string;
+	endDate: string;
+	status: 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
+	reason?: string;
+	managerRemark?: string;
+	applicationDate: string;
+	// Add computed properties for display
+	employee?: string; // For backward compatibility
+	type?: string;
+	days?: number;
+	date?: string;
 };
 
 export type CalendarEvent = {
@@ -42,3 +61,13 @@ export type ManagerProfile = {
 	jobTitle: string;
 	avatarUrl: string;
 };
+
+export interface TeamActivity {
+  type: 'attendance' | 'leave' | 'notification';
+  id: number | string; 
+  employeeId: string;
+  employeeName: string;
+  title: string;
+  details: string;
+  timestamp: string;
+}

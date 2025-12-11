@@ -2,9 +2,53 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ✨ Smooth color transition when toggling dark/light mode */
+/* Smooth color transition when toggling dark/light mode */
 html {
 	transition:
 		background-color 0.3s ease,
 		color 0.3s ease;
+}
+
+/* Light mode selection */
+::selection {
+    background: rgba(255, 255, 255, 0.4);
+    color: #df0c1e;
+}
+
+/* Dark mode selection  */
+.dark ::selection {
+    background: rgba(223, 12, 30, 0.3); /* semi-transparent red */
+    color: #ffffff; /* white text */
+}
+
+::-webkit-scrollbar {
+    width: 12px;
+}
+
+::-webkit-scrollbar {
+    width: 12px;
+}
+/* --- SCROLLBAR STYLES ---/*
+/* Light mode */
+::-webkit-scrollbar-track {
+    background: white;
+    border-radius: 10px;
+}
+
+.dark ::-webkit-scrollbar-track {
+    background: #111827; /* gray-900 */
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #ff0000, #cc0000);
+    border-radius: 10px;
+    border: 2px solid white;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+    border: 2px solid #111827; /* gray-900 */
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #ff3333, #e60000);
 }

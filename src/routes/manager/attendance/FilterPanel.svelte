@@ -2,7 +2,7 @@
 	import Input from '$lib/components/ui/input.svelte';
 	import Button from '$lib/components/ui/button.svelte';
 	import { createEventDispatcher } from 'svelte';
-	import { RotateCcw, Filter, FileDown } from 'lucide-svelte';
+	import { RotateCcw, Filter, Printer } from 'lucide-svelte';
 
 	const dispatch = createEventDispatcher();
 
@@ -35,7 +35,7 @@
 		Month
 		<select 
 			bind:value={month} 
-			class="ml-2 rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400"
+			class="ml-4 w-24 text-sm rounded-lg border border-gray-300 bg-white p-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-red-500 outline-none transition"
 		>
 			{#each Array(12) as _, i}
 				<option value={i + 1}>{i + 1}</option>
@@ -48,7 +48,7 @@
 		<input
 			type="number"
 			bind:value={year}
-			class="ml-2 w-24 rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400"
+			class="ml-4 w-24 text-sm rounded-lg border border-gray-300 bg-white p-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-red-500 outline-none transition"
 		/>
 	</label>
 
@@ -57,7 +57,7 @@
 		<Input 
 			placeholder="Name or ID" 
 			bind:value={employeeQuery} 
-			class="ml-2 p-1 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+			class="ml-2 rounded-lg border border-gray-300 bg-white p-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-red-500 outline-none transition"
 		/>
 	</label>
 
@@ -69,7 +69,7 @@
 			<Filter class="w-4 h-4" />
 		</Button>
 		<Button variant="outline" on:click={doExport} title="Export PDF">
-			<FileDown class="w-4 h-4" />
+			<Printer class="w-4 h-4" />
 		</Button>
 	</div>
 </div>

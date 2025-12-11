@@ -14,7 +14,7 @@
 	let showPassword = false;
 	let username = '';
 	let password = '';
-	console.log('✅ Loaded login page from routes/auth/login');
+	console.log('⭐ Loaded login page from routes/auth/login');
 	export let form: { message?: string };
 </script>
 

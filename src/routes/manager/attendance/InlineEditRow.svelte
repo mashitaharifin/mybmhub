@@ -18,6 +18,9 @@
 
 	let saving = false;
 
+	// Determine if this record is auto-punched
+	const isAutoPunched = r.isModified === 0;
+
 	const reasons = [
 		'Forgot to punch-out',
 		'Device offline',
@@ -65,9 +68,9 @@
 	});
 
 	function validate() {
-		// Only allow editing if attendance is incomplete
-		if (r.status === 'Complete') {
-			return 'Cannot modify completed attendance records.';
+		// Block auto-punched records unless it's incomplete
+		if (isAutoPunched && r.status === 'Complete') {
+			return 'This record was auto-punched and cannot be modified.';
 		}
 
 		if (!form.reason) return 'Please select a reason.';
@@ -172,8 +175,15 @@
 <div class="grid grid-cols-1 gap-3">
 	<!-- Status Warning -->
 	{#if r.status === 'Complete'}
-		<div class="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded">
-			<strong>Note:</strong> This attendance record is already complete and cannot be modified.
+		<div
+			class="bg-blue-100 border border-blue-400 text-blue-800 px-4 py-3 rounded-lg dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300"
+		>
+			<strong>Info:</strong>
+			{#if isAutoPunched}
+				This attendance record was auto-punched and does not require edits.
+			{:else}
+				This attendance record is already complete and cannot be modified.
+			{/if}
 		</div>
 	{/if}
 
@@ -185,7 +195,7 @@
 				type="datetime-local"
 				bind:value={form.checkInTime}
 				class="w-full rounded border px-2 py-1 bg-white dark:bg-gray-900"
-				disabled={r.status === 'Complete'}
+				disabled={r.status === 'Complete' && isAutoPunched}
 			/>
 			{#if r.checkInTime}
 				<p class="text-xs text-gray-500 mt-1">
@@ -244,7 +254,7 @@
 			<select
 				bind:value={form.reason}
 				class="w-full rounded border px-2 py-1 bg-white dark:bg-gray-900"
-				disabled={r.status === 'Complete'}
+				disabled={r.status === 'Complete' && isAutoPunched}
 			>
 				<option value="">Select reason</option>
 				{#each reasons as rs}

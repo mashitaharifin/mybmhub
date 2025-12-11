@@ -59,7 +59,9 @@ export async function validateSessionToken(token: string) {
 	const { session, user } = result;
 
 	// Type assertion for TypeScript so user has role and jobTitle
-	const typedUser: { id: number; username: string; role: string; jobTitle: string | null } = user;
+	const typedUser: {
+		email: any; id: number; username: string; role: string; jobTitle: string | null 
+} = user;
 
 	// Check expiration
 	const sessionExpired = Date.now() >= session.expiresAt.getTime();

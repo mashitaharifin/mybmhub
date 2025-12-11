@@ -1,12 +1,10 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
-	import LeaveApplicationForm from '../components/LeaveApplicationForm.svelte';
+	import { onMount } from 'svelte';
+	import LeaveTable from '../components/LeaveTable.svelte';
+	import LeaveDetailsModal from '../components/LeaveDetailsModal.svelte';
 	import ConfirmDialog from '../components/ConfirmDialog.svelte';
-	import LeaveStatusBadge from '../components/LeaveStatusBadge.svelte';
-	import Button from '$lib/components/ui/button.svelte';
-	import Input from '$lib/components/ui/input.svelte';
+	import LeaveApplicationForm from '../components/LeaveApplicationForm.svelte';
 	import * as Card from '$lib/components/ui/card';
-	import * as Table from '$lib/components/ui/table';
 	import * as Alert from '$lib/components/ui/alert';
 	import {
 		Breadcrumb,
@@ -16,35 +14,64 @@
 		BreadcrumbSeparator,
 		BreadcrumbPage
 	} from '$lib/components/ui/breadcrumb';
-	import { format } from '$lib/utils/formatHelpers';
-	import { RefreshCcw, ChevronLeft, ChevronRight, CircleX, Search } from 'lucide-svelte';
+	import { RefreshCcw, Search, Printer } from 'lucide-svelte';
+	import Input from '$lib/components/ui/input.svelte';
+	import Button from '$lib/components/ui/button.svelte';
+	import { exportElementToPDF } from '$lib/utils/exportHelpers';
 
+	// State
 	let leaveApplications: any[] = [];
 	let allApplications: any[] = [];
-
+	let totalRecords = 0;
+	let loading = false;
 	let alertMessage: string | null = null;
 	let alertVariant: 'success' | 'error' | 'info' = 'info';
-	let t: NodeJS.Timeout | null = null;
-
-	let showApplyForm = false;
-	let showCancelConfirm = false;
-	let cancelTargetId: number | null = null;
 
 	// Table state
 	let searchKeyword = '';
 	let limit = 10;
 	let offset = 0;
-	let totalRecords = 0;
-	let loading = false;
 
+	// Modal states
+	let showApplyForm = false;
+	let showDetailsModal = false;
+	let detailsTarget: any = null;
+	let showCancelConfirm = false;
+	let cancelTargetId: number | null = null;
+
+	// Alert timeout
+	let t: NodeJS.Timeout | null = null;
+
+	let company: {
+		logoPath?: string;
+		name?: string;
+		address?: string;
+		country?: string;
+		email?: string;
+		phone?: string;
+		regNo?: string;
+	} = {};
+
+	let currentUserName = '';
+
+	async function loadImageAsDataURL(url: string): Promise<string> {
+		const res = await fetch(url);
+		const blob = await res.blob();
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader();
+			reader.onloadend = () => resolve(reader.result as string);
+			reader.onerror = reject;
+			reader.readAsDataURL(blob);
+		});
+	}
+
+	// Alert handler
 	function showAlert(message: string, variant: 'success' | 'error' | 'info' = 'info') {
 		alertMessage = message;
 		alertVariant = variant;
 		if (t) clearTimeout(t);
 		t = setTimeout(() => (alertMessage = null), 9000);
 	}
-
-	onDestroy(() => t && clearTimeout(t));
 
 	// Load employee leave applications
 	async function loadApplications() {
@@ -60,8 +87,8 @@
 			const data = await res.json();
 			if (data.success) {
 				allApplications = data.data.applications ?? [];
-				leaveApplications = [...allApplications]; // initially show all
-				totalRecords = leaveApplications.length;
+				leaveApplications = [...allApplications];
+				totalRecords = data.data.total ?? allApplications.length;
 			} else {
 				showAlert(data.error || 'Failed to load leave applications', 'error');
 			}
@@ -83,7 +110,7 @@
 	function handleSearch() {
 		const keyword = searchKeyword.trim().toLowerCase();
 		if (!keyword) {
-			leaveApplications = [...allApplications]; // reset
+			leaveApplications = [...allApplications];
 		} else {
 			leaveApplications = allApplications.filter((app) => {
 				return (
@@ -96,28 +123,17 @@
 		offset = 0;
 	}
 
-	function prevPage() {
-		if (offset - limit >= 0) {
-			offset -= limit;
-			loadApplications();
-		}
-	}
-
-	function nextPage() {
-		if (offset + limit < totalRecords) {
-			offset += limit;
-			loadApplications();
-		}
-	}
-
-	// When a leave is applied, reload table
-	function onLeaveApplied() {
-		showApplyForm = false;
+	// Event handlers
+	function handlePageChange(newOffset: number) {
+		offset = newOffset;
 		loadApplications();
-		showAlert('Leave application submitted successfully', 'success');
 	}
 
-	// Cancel leave
+	function handleOpenDetails(app: any) {
+		detailsTarget = app;
+		showDetailsModal = true;
+	}
+
 	function confirmCancelLeave(id: number) {
 		cancelTargetId = id;
 		showCancelConfirm = true;
@@ -143,7 +159,72 @@
 		}
 	}
 
-	onMount(() => {
+	// When a leave is applied, reload table
+	function onLeaveApplied() {
+		showApplyForm = false;
+		loadApplications();
+		showAlert('Leave application submitted successfully', 'success');
+	}
+
+	// Export functionality
+	async function handleExport() {
+		let filterText = `${currentUserName}'s Leave Applications`;
+
+		if (searchKeyword) {
+			filterText += ` - Search: ${searchKeyword}`;
+		}
+
+		// Get DOM element to export (only the table, excluding search filters)
+		const tableElement = document.getElementById('leave-applications-table');
+		if (!tableElement) {
+			showAlert('Table not found for export.', 'error');
+			return;
+		}
+
+		// Build company header values
+		let companyToExport = { ...company };
+		if (company.logoPath) {
+			companyToExport.logoPath = await loadImageAsDataURL(company.logoPath);
+		}
+
+		try {
+			await exportElementToPDF(
+				tableElement,
+				`${filterText}.pdf`,
+				filterText, // title
+				companyToExport // company info
+			);
+			showAlert('Export successful!', 'success');
+		} catch (err) {
+			console.error(err);
+			showAlert('Export failed', 'error');
+		}
+	}
+
+	onMount(async () => {
+		// Load company info
+		try {
+			const companyRes = await fetch('/api/system-settings/company-profile');
+			const companyData = await companyRes.json();
+			if (companyData.success) {
+				company = companyData.company;
+			}
+		} catch (err) {
+			console.error('Failed to fetch company info:', err);
+		}
+
+		// Load current user info
+		try {
+			const userRes = await fetch('/api/me');
+			const userData = await userRes.json();
+			if (userData.success) {
+				currentUserName = userData.data.name || 'My';
+			}
+		} catch (err) {
+			console.warn('Failed to fetch current user info', err);
+			currentUserName = 'My';
+		}
+
 		loadApplications();
 	});
 </script>
@@ -163,7 +244,7 @@
 					</BreadcrumbItem>
 					<BreadcrumbSeparator />
 					<BreadcrumbItem>
-						<BreadcrumbLink href="/employee/leave/apply">Leave</BreadcrumbLink>
+						<BreadcrumbLink href="/employee/leave/balance">Leave</BreadcrumbLink>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator />
 					<BreadcrumbItem>
@@ -184,28 +265,24 @@
 	<Card.Content>
 		{#if alertMessage}
 			<Alert.Root variant={alertVariant}>
-				<Alert.Title
-					>{alertVariant === 'success'
-						? 'Success'
-						: alertVariant === 'error'
-							? 'Error'
-							: 'Info'}</Alert.Title
-				>
+				<Alert.Title>
+					{alertVariant === 'success' ? 'Success' : alertVariant === 'error' ? 'Error' : 'Info'}
+				</Alert.Title>
 				<Alert.Description>{alertMessage}</Alert.Description>
 			</Alert.Root>
 		{/if}
 
-		<!-- Search + Apply Button Combined -->
+		<!-- Search + Action Buttons -->
 		<div class="flex justify-between items-end mb-4">
 			<!-- Left: Search Controls -->
-			<div class="flex gap-4 items-end">
+			<div class="flex gap-2 items-end">
 				<div class="flex flex-col text-sm font-medium">
 					<label for="search" class="text-gray-700 dark:text-gray-300">Search Leave</label>
 					<Input
 						id="search"
 						placeholder="Search by status or type"
 						bind:value={searchKeyword}
-						class="text-sm rounded-lg border border-gray-300 bg-white p-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
+						class="text-sm rounded-lg border border-gray-300 bg-white p-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-red-500 outline-none transition min-w-[140px]"
 					/>
 				</div>
 
@@ -216,114 +293,30 @@
 				<Button on:click={handleRefresh} title="Refresh">
 					<RefreshCcw class="w-4 h-4" />
 				</Button>
+
+				<Button on:click={handleExport} title="Export PDF">
+					<Printer class="w-4 h-4" />
+				</Button>
 			</div>
 
-			<!-- Right: Apply Leave Button -->
-			<Button on:click={() => (showApplyForm = true)} class="px-4">+ Apply Leave</Button>
+			<!-- Right: Apply Leave + Export Buttons -->
+			<div class="flex gap-2">
+				<Button on:click={() => (showApplyForm = true)} class="px-4">+ Apply Leave</Button>
+			</div>
 		</div>
 
-		<!-- Leave Applications Table -->
-		<div class="overflow-x-auto">
-			<Table.Root>
-				<Table.Header>
-					<Table.Row>
-						<Table.Head>#</Table.Head>
-						<Table.Head>Leave Type</Table.Head>
-						<Table.Head class="text-center">Start Date</Table.Head>
-						<Table.Head class="text-center">End Date</Table.Head>
-						<Table.Head class="text-center">Half Day</Table.Head>
-						<Table.Head class="text-center">Session</Table.Head>
-						<Table.Head class="text-center">Duration</Table.Head>
-						<Table.Head class="text-center">Reason</Table.Head>
-						<Table.Head class="text-center">Document</Table.Head>
-						<Table.Head class="text-center">Status</Table.Head>
-						<Table.Head class="text-center">Applied On</Table.Head>
-						<Table.Head class="text-center">Actions</Table.Head>
-					</Table.Row>
-				</Table.Header>
-				<Table.Body>
-					{#if leaveApplications.length}
-						{#each leaveApplications as app, i}
-							<Table.Row>
-								<Table.Cell>{i + 1}</Table.Cell>
-								<Table.Cell>{app.leaveTypeName}</Table.Cell>
-								<Table.Cell class="text-center">{new Date(app.startDate).toISOString().split('T')[0]}</Table.Cell>
-								<Table.Cell class="text-center">{new Date(app.endDate).toISOString().split('T')[0]}</Table.Cell>
-								<Table.Cell class="text-center">{app.halfDay ? 'Yes' : 'No'}</Table.Cell>
-								<Table.Cell class="text-center">
-									{#if app.halfDay}
-										{app.halfDaySession ?? '-'}
-									{:else}
-										-
-									{/if}
-								</Table.Cell>
-								<Table.Cell class="text-center">{app.duration} day{app.duration > 1 ? 's' : ''}</Table.Cell>
-								<Table.Cell class="text-center">
-									{#if app.leaveTypeName === 'Emergency Leave'}
-										{app.reason || '-'}
-									{:else}
-										-
-									{/if}
-								</Table.Cell>
-								<Table.Cell class="text-center">
-									{#if app.leaveTypeName === 'Medical Leave' || app.leaveTypeName === 'Hospitalization Leave'}
-										{#if app.docImg}
-											<a
-												href={app.docImg}
-												target="_blank"
-												class="text-blue-600 dark:text-blue-400 underline">View</a
-											>
-										{:else}
-											-
-										{/if}
-									{:else}
-										-
-									{/if}
-								</Table.Cell>
-								<Table.Cell class="text-center"><LeaveStatusBadge status={app.status} /></Table.Cell>
-								<Table.Cell class="text-center">{format.timestamp(app.applicationDate)}</Table.Cell>
-								<Table.Cell>
-									{#if (app.status === 'Pending' || app.status === 'Approved') && new Date(app.startDate) > new Date()}
-										<div class="flex justify-center">
-											<button
-												on:click={() => confirmCancelLeave(app.id)}
-												class="inline-flex items-center justify-center p-1.5 rounded-md text-gray-700 dark:text-gray-300 hover:bg-red-50 hover:text-red-600 hover:border-red-300 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:hover:border-red-700 transition-colors duration-150 cursor-pointer"
-												title="Cancel leave"
-												aria-label="Cancel leave"
-											>
-												<CircleX size={18} />
-											</button>
-										</div>
-									{:else}
-										<span class="text-gray-400 dark:text-gray-500">-</span>
-									{/if}
-								</Table.Cell>
-							</Table.Row>
-						{/each}
-					{:else}
-						<Table.Row>
-							<Table.Cell colspan="12" class="text-center text-muted-foreground h-16">
-								No leave applications found.
-							</Table.Cell>
-						</Table.Row>
-					{/if}
-				</Table.Body>
-			</Table.Root>
-		</div>
-
-		<!-- Pagination -->
-		<div class="flex justify-between mt-4 items-center">
-			<div class="text-sm text-gray-600 dark:text-gray-100">
-				Showing {offset + 1}-{Math.min(offset + limit, totalRecords)} of {totalRecords} records
-			</div>
-			<div class="flex space-x-2">
-				<Button variant="outline" on:click={prevPage} disabled={offset === 0}
-					><ChevronLeft class="w-4 h-4" /></Button
-				>
-				<Button variant="outline" on:click={nextPage} disabled={offset + limit >= totalRecords}
-					><ChevronRight class="w-4 h-4" /></Button
-				>
-			</div>
+		<!-- Leave Table Component - Wrapped for export -->
+		<div id="leave-applications-table">
+			<LeaveTable
+				applications={leaveApplications}
+				{loading}
+				{totalRecords}
+				{limit}
+				{offset}
+				onPageChange={handlePageChange}
+				onOpenDetails={handleOpenDetails}
+				onConfirmCancel={confirmCancelLeave}
+			/>
 		</div>
 	</Card.Content>
 </Card.Root>
@@ -333,7 +326,12 @@
 	<LeaveApplicationForm on:close={() => (showApplyForm = false)} on:submitted={onLeaveApplied} />
 {/if}
 
-<!-- Cancel Leave Confirm -->
+<!-- Leave Details Modal -->
+{#if showDetailsModal && detailsTarget}
+	<LeaveDetailsModal application={detailsTarget} onClose={() => (showDetailsModal = false)} />
+{/if}
+
+<!-- Cancel Leave Confirm Dialog -->
 {#if showCancelConfirm}
 	<ConfirmDialog
 		title="Confirm Cancel Leave"

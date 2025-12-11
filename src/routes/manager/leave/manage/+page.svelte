@@ -13,9 +13,10 @@
 		BreadcrumbSeparator,
 		BreadcrumbPage
 	} from '$lib/components/ui/breadcrumb';
-	import { RefreshCcw, Funnel } from 'lucide-svelte';
+	import { RefreshCcw, Search, Printer } from 'lucide-svelte';
 	import Input from '$lib/components/ui/input.svelte';
 	import Button from '$lib/components/ui/button.svelte';
+	import { exportElementToPDF } from '$lib/utils/exportHelpers';
 
 	// State
 	let leaveApplications: any[] = [];
@@ -46,6 +47,31 @@
 		alertVariant = variant;
 		if (t) clearTimeout(t);
 		t = setTimeout(() => (alertMessage = null), 9000);
+	}
+
+	// Wrapper Reference
+	let exportSection: HTMLDivElement;
+
+	// Company info for PDF header
+	let company: {
+		logoPath?: string;
+		name?: string;
+		address?: string;
+		country?: string;
+		email?: string;
+		phone?: string;
+		regNo?: string;
+	} = {};
+
+	async function loadImageAsDataURL(url: string): Promise<string> {
+		const res = await fetch(url);
+		const blob = await res.blob();
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader();
+			reader.onloadend = () => resolve(reader.result as string);
+			reader.onerror = reject;
+			reader.readAsDataURL(blob);
+		});
 	}
 
 	// Load leave applications
@@ -105,7 +131,7 @@
 	function handleConfirmReject(id: number) {
 		confirmConfig = {
 			type: 'reject',
-			title: 'Reject Leave',
+			title: 'Reject Leave Application',
 			message: 'Please provide a reason for rejection:',
 			targetId: id,
 			requiresInput: true
@@ -143,8 +169,12 @@
 			const data = await res.json();
 
 			if (data.success) {
-				const message = action === 'approve' ? 'Leave approved' :
-				              action === 'cancel' ? 'Leave cancelled' : 'Leave rejected';
+				const message =
+					action === 'approve'
+						? 'Leave approved'
+						: action === 'cancel'
+							? 'Leave cancelled'
+							: 'Leave rejected';
 				showAlert(message, 'success');
 				loadApplications();
 			} else {
@@ -158,7 +188,43 @@
 		}
 	}
 
-	onMount(() => {
+	async function handleExport() {
+		try {
+			if (!exportSection) {
+				showAlert('Nothing to export', 'error');
+				return;
+			}
+
+			let companyToExport = { ...company };
+
+			// convert logo to base64
+			if (company.logoPath) {
+				companyToExport.logoPath = await loadImageAsDataURL(company.logoPath);
+			}
+
+			await exportElementToPDF(
+				exportSection,
+				'Leave Applications.pdf',
+				'Leave Applications Report',
+				companyToExport
+			);
+		} catch (err) {
+			console.error(err);
+			showAlert('Failed to export PDF', 'error');
+		}
+	}
+
+	onMount(async () => {
+		// 1. Fetch company profile
+		try {
+			const res = await fetch('/api/system-settings/company-profile');
+			const data = await res.json();
+			if (data.success) company = data.company;
+		} catch (err) {
+			console.error('Failed to fetch company info:', err);
+		}
+
+		// 2. Load leave applications
 		loadApplications();
 	});
 </script>
@@ -207,15 +273,12 @@
 		<!-- Filters -->
 		<div class="flex gap-4 mb-4 items-end">
 			<!-- Status Filter -->
-			<div class="flex flex-col">
-				<!-- svelte-ignore a11y_label_has_associated_control -->
-				<label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+			<div class="flex flex-col text-sm font-medium">
+				<label for="status-filter" class="text-gray-700 dark:text-gray-300 mb-1">Status</label>
 				<select
+					id="status-filter"
 					bind:value={statusFilter}
-					class="px-3 py-2 text-sm rounded-lg border
-						   bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100
-						   border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600
-						   focus:ring-2 focus:ring-primary-500 outline-none transition min-w-[140px]"
+					class="rounded-lg border border-gray-300 px-2 py-1 text-sm bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-red-500 outline-none transition min-w-[140px]"
 				>
 					<option value="">All Status</option>
 					<option value="Pending">Pending</option>
@@ -226,17 +289,20 @@
 			</div>
 
 			<!-- Employee Filter -->
-			<div class="flex flex-col">
+			<div class="flex flex-col text-sm font-medium">
 				<!-- svelte-ignore a11y_label_has_associated_control -->
-				<label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-					Employee Name
-				</label>
-				<Input placeholder="Search employee" bind:value={employeeFilter} />
+				<label for="employee-search" class="text-gray-700 dark:text-gray-300 mb-1">Search</label>
+				<Input
+					id="employee-search"
+					placeholder="Search employee name"
+					bind:value={employeeFilter}
+					class="text-sm rounded-lg border border-gray-300 bg-white p-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-red-500 outline-none transition min-w-[140px]"
+				/>
 			</div>
 
 			<!-- Apply Filter Button -->
 			<Button on:click={loadApplications} class="flex items-center gap-2" title="Apply Filter">
-				<Funnel class="w-4 h-4" />
+				<Search class="w-4 h-4" />
 			</Button>
 
 			<!-- Reset Filter Button -->
@@ -251,30 +317,33 @@
 			>
 				<RefreshCcw class="w-4 h-4" />
 			</Button>
+
+			<Button on:click={() => handleExport()} title="Export PDF">
+				<Printer class="w-4 h-4" />
+			</Button>
 		</div>
 
-		<!-- Leave Table Component -->
-		<LeaveTable
-			applications={leaveApplications}
-			loading={loading}
-			totalRecords={totalRecords}
-			limit={limit}
-			offset={offset}
-			onPageChange={handlePageChange}
-			onOpenDetails={handleOpenDetails}
-			onConfirmApprove={handleConfirmApprove}
-			onConfirmCancel={handleConfirmCancel}
-			onConfirmReject={handleConfirmReject}
-		/>
+		<div bind:this={exportSection}>
+			<!-- Leave Table Component -->
+			<LeaveTable
+				applications={leaveApplications}
+				{loading}
+				{totalRecords}
+				{limit}
+				{offset}
+				onPageChange={handlePageChange}
+				onOpenDetails={handleOpenDetails}
+				onConfirmApprove={handleConfirmApprove}
+				onConfirmCancel={handleConfirmCancel}
+				onConfirmReject={handleConfirmReject}
+			/>
+		</div>
 	</Card.Content>
 </Card.Root>
 
 <!-- Leave Details Modal -->
 {#if showDetailsModal && detailsTarget}
-	<LeaveDetailsModal
-		application={detailsTarget}
-		onClose={() => (showDetailsModal = false)}
-	/>
+	<LeaveDetailsModal application={detailsTarget} onClose={() => (showDetailsModal = false)} />
 {/if}
 
 <!-- Confirm Message Modal -->

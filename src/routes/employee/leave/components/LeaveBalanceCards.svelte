@@ -1,7 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import type { LeaveBalanceItem } from '$lib/types/empDashboard';
-	import { History } from 'lucide-svelte';
 
 	export let leaveBalances: LeaveBalanceItem[] = [];
 
@@ -15,14 +13,6 @@
 		if (remainingPercent >= 70) return 'text-green-500'; // High remaining (Good)
 		if (remainingPercent >= 40) return 'text-yellow-500'; // Medium remaining (Caution)
 		return 'text-red-500'; // Low remaining (Urgent)
-	}
-
-	function viewHistory(leaveTypeID: number) {
-		goto(`/employee/leave/apply?type=${leaveTypeID}`);
-	}
-
-	function applyLeave() {
-		goto('/employee/leave/apply');
 	}
 
 	const CIRCLE_RADIUS = 40; // This controls the size of the ring
@@ -88,24 +78,6 @@
 				</div>
 			</div>
 
-			<div
-				class="flex justify-between items-center mt-auto pt-4 border-t border-gray-100 dark:border-gray-700"
-			>
-				<button
-					on:click={() => viewHistory(leave.leaveTypeID)}
-					class="flex items-center text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-600 transition-colors group"
-				>
-					<History class="w-4 h-4 mr-1 group-hover:text-red-500 transition-colors" />
-					History
-				</button>
-
-				<button
-					on:click={applyLeave}
-					class="text-sm font-medium px-3 py-1.5 rounded-2xl border text-red-600 bg-white hover:bg-red-500 hover:text-white dark:bg-gray-700 dark:text-white dark:hover:bg-red-800 transition"
-				>
-					+ Apply Leave
-				</button>
-			</div>
 		</div>
 	{/each}
 </div>

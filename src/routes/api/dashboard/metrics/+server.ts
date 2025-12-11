@@ -5,7 +5,7 @@ import { employees, leaveApplications, attendance } from '$lib/server/db/schema'
 
 export const GET: RequestHandler = async () => {
   try {
-    // 1️⃣ Total active employees
+    // Total active employees
     const totalEmployeesQuery = await db
       .select({ count: sql<number>`count(*)` })
       .from(employees)
@@ -13,7 +13,7 @@ export const GET: RequestHandler = async () => {
 
     const totalEmployees = totalEmployeesQuery[0]?.count ?? 0;
 
-    // 2️⃣ Leave requests summary
+    // Leave requests summary
     const leaveCountsQuery = await db
       .select({
         pending: sql<number>`count(*) filter (where ${leaveApplications.status} = 'Pending')`,
@@ -24,7 +24,7 @@ export const GET: RequestHandler = async () => {
 
     const leaveSummary = leaveCountsQuery[0] || { pending: 0, approved: 0, rejected: 0 };
 
-    // 3️⃣ Attendance summary (today)
+    // Attendance summary (today)
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
 
@@ -38,7 +38,7 @@ export const GET: RequestHandler = async () => {
     const totalPresent = attendanceQuery[0]?.totalPresent ?? 0;
     const totalAbsent = totalEmployees - totalPresent;
 
-    // 4️⃣ Build final metrics object
+    // Build final metrics object
     const metrics = {
       totalEmployees,
       leaveSummary,

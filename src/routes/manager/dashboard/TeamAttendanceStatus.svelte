@@ -19,6 +19,26 @@
 
   let interval: ReturnType<typeof setInterval>;
 
+  // Helper to determine status from attendance data
+  const getAttendanceStatus = (member: TeamMember): 'Present' | 'Late' | 'Absent' | 'On Leave' => {
+    if (member.checkInTime && member.checkOutTime) {
+      return 'Present';
+    } else if (member.checkInTime && !member.checkOutTime) {
+      return 'Present'; // Or 'Late' based on check-in time logic
+    }
+    return 'Absent';
+  };
+
+  // Helper to get display name
+  const getDisplayName = (member: TeamMember): string => {
+    return member.employeeName || member.name || 'Unknown';
+  };
+
+  // Helper to get hours worked
+  const getHoursWorked = (member: TeamMember): string => {
+    return member.workedHours || member.hoursWorked || '0';
+  };
+
   async function fetchAttendance() {
     loading = true;
     error = null;
@@ -36,7 +56,7 @@
 
   onMount(() => {
     fetchAttendance();
-    interval = setInterval(fetchAttendance, 5000); // auto-refresh every 5s
+    interval = setInterval(fetchAttendance, 10000);
   });
 
   onDestroy(() => clearInterval(interval));
@@ -55,11 +75,11 @@
     <ul class="space-y-2 max-h-72 overflow-y-auto">
       {#each team as m}
         <li class="flex justify-between items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-          <div class="text-gray-800 dark:text-gray-200">{m.name}</div>
+          <div class="text-gray-800 dark:text-gray-200">{getDisplayName(m)}</div>
           <div class="flex items-center gap-2">
-            <span class={`w-3 h-3 rounded-full ${statusColor(m.status)}`}></span>
+            <span class={`w-3 h-3 rounded-full ${statusColor(getAttendanceStatus(m))}`}></span>
             <span class="text-xs text-gray-500 dark:text-gray-400">
-              {m.status} — {m.hoursWorked ?? '0'}h
+              {getAttendanceStatus(m)} — {getHoursWorked(m)}h
             </span>
           </div>
         </li>

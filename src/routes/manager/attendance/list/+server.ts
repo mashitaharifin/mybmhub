@@ -121,6 +121,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				checkOutTime: attendance.checkOutTime,
 				workedHours: attendance.workedHours,
 				isModified: attendance.isModified,
+				autoPunchedOut: attendance.autoPunchedOut,
+				autoPunchedOutReason: attendance.autoPunchedOutReason,
+				autoPunchedOutReasonRequired: attendance.autoPunchedOutReasonRequired,
 				updatedAt: attendance.updatedAt
 			})
 			.from(attendance)

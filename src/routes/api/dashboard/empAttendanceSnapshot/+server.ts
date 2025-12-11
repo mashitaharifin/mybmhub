@@ -23,7 +23,6 @@ export const GET: RequestHandler = async ({ locals }) => {
 				checkOutTime: attendance.checkOutTime,
 				workedHours: attendance.workedHours,
 				totalHours: attendance.totalHours,
-				breakHours: attendance.breakHours
 			})
 			.from(attendance)
 			.where(eq(attendance.userID, user.id))

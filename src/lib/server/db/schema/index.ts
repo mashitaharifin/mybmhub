@@ -5,6 +5,7 @@ export * from './employee';
 export * from './geofenceLocation';
 export * from './punch';
 export * from './attendance';
+export * from './lateReasonLookup';
 export * from './leaveType';
 export * from './leaveApplication';
 export * from './leaveBalance';
@@ -14,6 +15,7 @@ export * from './holiday';
 export * from './report';
 export * from './auditLog';
 export * from './workingPattern';
+export * from './workingDayOverrides'
 export * from './systemSettings';
 export * from './session';
 export * from '../client';

@@ -28,8 +28,11 @@
 		checkInLocation: { lat: number; lng: number; locationName: string | null } | null;
 		checkOutLocation: { lat: number; lng: number; locationName: string | null } | null;
 		durationStatus?: string;
-		reason?: string;
-		remarks?: string;
+		reason?: string; // consider delete this field later
+		remarks?: string; // consider delete this field later
+		autoPunchedOut?: boolean;
+		autoPunchedOutReason?: string | null;
+		autoPunchedOutReasonRequired?: boolean;
 	};
 
 	type WorkingHours = {
@@ -88,7 +91,15 @@
 
 	// Determine if the record is complete (has both check-in and check-out)
 	function getStatus(record: AttendanceRecord): string {
-		return record.checkInTime && record.checkOutTime ? 'Complete' : 'Incomplete';
+		// First check if both punches exist
+		if (record.checkInTime && record.checkOutTime) {
+			// Then check if it was auto-punched
+			if (record.autoPunchedOut) {
+				return 'Auto-Complete';
+			}
+			return 'Complete';
+		}
+		return 'Incomplete';
 	}
 
 	function getDurationType(record: AttendanceRecord) {
@@ -121,7 +132,13 @@
 
 		if (percentageWorked >= 0.9) {
 			// ≥ 90% (≥ 7.2 hours)
-			return isLate ? 'Late (Full Day)' : 'Full Day';
+			if (isLate && actualWorkedHours >= totalShiftHours) {
+				return 'Full Day (Late)';
+			} else if (isLate) {
+				return 'Late (Full Day)';
+			} else {
+				return 'Full Day';
+			}
 		} else if (percentageWorked >= 0.5) {
 			// 50-89% (4-7.19 hours)
 			return 'Half Day';
@@ -153,25 +170,28 @@
 	});
 
 	async function fetchRecords(filters: FilterParams = {}) {
-		const payload = { page, pageSize, sortBy, ...filters };
-		const res = await fetch('./attendance/list', {
-			method: 'POST',
-			body: JSON.stringify(payload),
-			headers: { 'Content-Type': 'application/json' }
+	const payload = { page, pageSize, sortBy, ...filters };
+	const res = await fetch('./attendance/list', {
+		method: 'POST',
+		body: JSON.stringify(payload),
+		headers: { 'Content-Type': 'application/json' }
+	});
+	if (res.ok) {
+		const json = await res.json();
+		// DEBUG: Check what data is coming in
+		console.log('Records data:', json.records);
+		
+		records = json.records.map((r: AttendanceRecord) => {
+			r.workedHours = calculateWorkedHours(r.checkInTime, r.checkOutTime);
+			r.status = getStatus(r);
+			r.durationStatus = getDurationType(r);
+			return r;
 		});
-		if (res.ok) {
-			const json = await res.json();
-			records = json.records.map((r: AttendanceRecord) => {
-				r.workedHours = calculateWorkedHours(r.checkInTime, r.checkOutTime);
-				r.status = getStatus(r);
-				r.durationStatus = getDurationType(r);
-				return r;
-			});
-			total = json.total;
-		} else {
-			dispatch('alert', { message: 'Failed to load records', variant: 'error' });
-		}
+		total = json.total;
+	} else {
+		dispatch('alert', { message: 'Failed to load records', variant: 'error' });
 	}
+}
 
 	function previousPage() {
 		if (page > 1) {
@@ -203,17 +223,19 @@
 	function statusClass(status: string) {
 		switch (status) {
 			case 'Complete':
-				return 'bg-green-100 text-green-800';
+				return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+			case 'Auto-Complete':
+				return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
 			case 'Incomplete':
-				return 'bg-red-100 text-red-800';
+				return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
 			default:
-				return 'bg-gray-100 text-gray-800';
+				return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
 		}
 	}
 </script>
 
 <div class="overflow-x-auto">
-	<Table.Root>
+	<Table.Root id="attendance-table">
 		<Table.Header>
 			<Table.Row>
 				<Table.Head>#</Table.Head>
@@ -251,7 +273,45 @@
 						<Table.Cell>{r.durationStatus || '—'}</Table.Cell>
 						<Table.Cell><LocationDisplay record={r} type="in" /></Table.Cell>
 						<Table.Cell><LocationDisplay record={r} type="out" /></Table.Cell>
-						<Table.Cell>{r.reason ?? '—'}</Table.Cell>
+						<Table.Cell>
+							{#if r.autoPunchedOut && r.autoPunchedOutReason}
+								<!-- Auto-punch with user's reason -->
+								<div class="max-w-xs">
+									<div class="flex items-center gap-1 mb-1">
+										<div class="w-2 h-2 bg-yellow-500 rounded-full"></div>
+										<span class="font-medium text-yellow-700 dark:text-yellow-300"
+											>Auto-punched</span
+										>
+									</div>
+									<div
+										class="text-xs text-gray-700 dark:text-gray-300 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded border border-yellow-100 dark:border-yellow-800"
+									>
+										{r.autoPunchedOutReason}
+									</div>
+								</div>
+							{:else if r.autoPunchedOut && r.autoPunchedOutReasonRequired && !r.autoPunchedOutReason}
+								<!-- Auto-punch but reason not submitted yet -->
+								<div class="max-w-xs">
+									<div class="flex items-center gap-1 mb-1">
+										<div class="w-2 h-2 bg-red-500 rounded-full"></div>
+										<span class="font-medium text-red-700 dark:text-red-300">Reason Required</span>
+									</div>
+									<div class="text-red-600 dark:text-red-400 italic">
+										Employee needs to submit reason
+									</div>
+								</div>
+							{:else if r.reason}
+								<!-- Manager-modified reason or other remarks -->
+								<div class="max-w-xs">
+									<div class="text-gray-700 dark:text-gray-300">
+										{r.reason}
+									</div>
+								</div>
+							{:else}
+								<!-- Default case -->
+								<span class="text-gray-400">—</span>
+							{/if}
+						</Table.Cell>
 
 						<Table.Cell class="text-right">
 							<button

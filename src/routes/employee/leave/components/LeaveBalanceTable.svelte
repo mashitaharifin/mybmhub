@@ -1,8 +1,6 @@
 <script lang="ts">
 	import * as Table from '$lib/components/ui/table';
 	import type { LeaveBalanceItem } from '$lib/types/empDashboard';
-	import { goto } from '$app/navigation';
-	import { History, CalendarPlus } from 'lucide-svelte';
 
 	export let leaveBalances: LeaveBalanceItem[] = [];
 
@@ -16,14 +14,6 @@
 		if (remainingPercent >= 40) return 'bg-yellow-500';
 		return 'bg-red-500';
 	}
-
-	function viewHistory(leaveTypeID: number) {
-		goto('/employee/leave/apply');
-	}
-
-	function applyLeave() {
-		goto('/employee/leave/apply');
-	}
 </script>
 
 <div class="overflow-x-auto">
@@ -36,7 +26,6 @@
 				<Table.Head class="text-center">Taken</Table.Head>
 				<Table.Head class="text-center">Remaining</Table.Head>
 				<Table.Head class="w-[280px] text-center">Usage</Table.Head>
-				<Table.Head class="text-right">Actions</Table.Head>
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
@@ -71,31 +60,11 @@
 							</div>
 						</Table.Cell>
 
-						<!-- Actions from Version 1 -->
-						<Table.Cell class="flex gap-4 justify-end">
-							<!-- View History Link -->
-							<a
-								href="/employee/leave/apply"
-								on:click|preventDefault={() => viewHistory(leave.leaveTypeID)}
-								class="flex items-center text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-600 transition-colors group"
-							>
-								<History class="w-4 h-4 mr-1 group-hover:text-red-500 transition-colors" />
-								History
-							</a>
-
-							<!-- Apply Leave Button -->
-							<button
-								on:click={applyLeave}
-								class="text-sm font-medium px-3 py-1.5 rounded-2xl border text-red-600 bg-white hover:bg-red-500 hover:text-white dark:bg-gray-700 dark:text-white dark:hover:bg-red-800 transition"
-							>
-								+ Apply Leave
-							</button>
-						</Table.Cell>
 					</Table.Row>
 				{/each}
 			{:else}
 				<Table.Row>
-					<Table.Cell colspan="7" class="text-center text-gray-500 h-16">
+					<Table.Cell colspan="6" class="text-center text-gray-500 h-16">
 						No leave balances found.
 					</Table.Cell>
 				</Table.Row>

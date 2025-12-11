@@ -141,10 +141,11 @@ interface CancelLeaveParams {
 export async function cancelLeave(params: CancelLeaveParams) {
 	const { userId, applicationId } = params;
 
+	// 1. Get performing user
 	const [performingUser] = await db.select().from(users).where(eq(users.id, userId));
 	if (!performingUser) throw new Error('User not found');
 
-	// Fetch leave application
+	// 2. Fetch leave application
 	const [application] = await db
 		.select()
 		.from(leaveApplications)
@@ -154,7 +155,7 @@ export async function cancelLeave(params: CancelLeaveParams) {
 
 	const today = new Date();
 
-	// Determine if cancel is allowed
+	// 3. Determine if cancel is allowed
 	const isOwner = application.userID === userId;
 	const isManager = performingUser.role === 'Manager';
 
@@ -163,19 +164,17 @@ export async function cancelLeave(params: CancelLeaveParams) {
 	}
 
 	if (application.status === 'Pending') {
-		// Anyone can cancel their own pending leave, manager can too
+		// Anyone can cancel their own pending leave; manager can too
 	} else if (application.status === 'Approved') {
 		// Only allow cancelling future approved leaves
 		const startDate = new Date(application.startDate);
 		if (startDate <= today) throw new Error('Cannot cancel leave that has already started');
-
-		// Employees can cancel their own approved leave, managers can cancel any future approved leave
 		if (!isOwner && !isManager) throw new Error('Not authorized to cancel this approved leave');
 	} else {
 		throw new Error('Cannot cancel this leave');
 	}
 
-	// Update leave application
+	// 4. Update leave application
 	await db
 		.update(leaveApplications)
 		.set({
@@ -185,8 +184,8 @@ export async function cancelLeave(params: CancelLeaveParams) {
 		})
 		.where(eq(leaveApplications.id, applicationId));
 
-	// Restore leave balance if applicable
-	if (!application.userID) throw new Error('Invalid leave application: missing user ID');
+	// 5. Restore leave balance if applicable
+	if (!application.userID) throw new Error('Leave application has no userID');
 	const [balance] = await db
 		.select()
 		.from(leaveBalances)
@@ -199,23 +198,34 @@ export async function cancelLeave(params: CancelLeaveParams) {
 
 	if (balance) {
 		const restoreDays = Number(application.duration ?? (application.halfDay ? 0.5 : 1));
+		const currentDaysTaken = Number(balance.daysTaken ?? 0);
+		const newDaysTaken = Math.max(0, currentDaysTaken - restoreDays); // Prevent negative
 
 		await db
 			.update(leaveBalances)
 			.set({
-				remainingBalance: String((Number(balance.remainingBalance ?? 0) + restoreDays).toFixed(2))
+				remainingBalance: String((Number(balance.remainingBalance ?? 0) + restoreDays).toFixed(2)),
+				daysTaken: newDaysTaken.toFixed(2)
 			})
 			.where(eq(leaveBalances.id, balance.id));
 	}
 
-	// Audit log - FIXED FIELD NAMES
+	// 6. Fetch correct employee record for audit log
+	const [employee] = await db
+		.select()
+		.from(employees)
+		.where(eq(employees.userId, application.userID));
+
+	if (!employee) throw new Error('Employee not found for audit log');
+
+	// 7. Audit log
 	await db.insert(auditLogs).values({
-		userID: userId, // CORRECT: matches schema field name
-		employeeID: application.userID, // CORRECT: matches schema field name
-		actionType: 'CANCEL LEAVE', // CORRECT: matches schema field name
+		userID: userId, // who performed the action
+		employeeID: employee.id, // correct employee ID
+		actionType: 'CANCEL LEAVE',
 		action: isManager ? 'Manager cancelled leave' : 'Employee cancelled leave',
 		targetTable: 'leave_applications',
-		targetID: application.id, // CORRECT: matches schema field name
+		targetID: application.id,
 		details: `Cancelled leave from ${application.startDate} to ${application.endDate} (${application.duration} day(s))`,
 		isUserVisible: true
 	});
@@ -255,7 +265,7 @@ export async function approveLeave(params: ApproveLeaveParams) {
 
 	// 4. Fetch leave type
 	if (!application.leaveTypeID) throw new Error('Leave application has no leave type');
-	
+
 	const [leaveType] = await db
 		.select()
 		.from(leaveTypes)
@@ -282,9 +292,13 @@ export async function approveLeave(params: ApproveLeaveParams) {
 		const newBalance = Number(balance.remainingBalance ?? 0) - deduction;
 		if (newBalance < 0) throw new Error('Insufficient balance to approve');
 
+		// Also update daysTaken
+		const currentDaysTaken = Number(balance.daysTaken ?? 0);
+		const newDaysTaken = currentDaysTaken + deduction;
+
 		await db
 			.update(leaveBalances)
-			.set({ remainingBalance: String(newBalance) })
+			.set({ remainingBalance: newBalance.toFixed(2), daysTaken: newDaysTaken.toFixed(2) })
 			.where(eq(leaveBalances.id, balance.id));
 	}
 
@@ -324,7 +338,6 @@ export async function rejectLeave(params: RejectLeaveParams) {
 
 	// Verify manager
 	const [managerUser] = await db.select().from(users).where(eq(users.id, managerId));
-
 	if (!managerUser || managerUser.role !== 'Manager') {
 		throw new Error('Only managers can reject leave');
 	}
@@ -339,6 +352,8 @@ export async function rejectLeave(params: RejectLeaveParams) {
 	if (application.status !== 'Pending')
 		throw new Error('Only pending applications can be rejected');
 
+	if (!application.userID) throw new Error('Leave application has no userID');
+
 	// Update status
 	await db
 		.update(leaveApplications)
@@ -350,10 +365,10 @@ export async function rejectLeave(params: RejectLeaveParams) {
 		})
 		.where(eq(leaveApplications.id, applicationId));
 
-	// Audit
+	// Audit log
 	await db.insert(auditLogs).values({
-		userID: managerId,
-		employeeID: application.userID,
+		userID: managerId, // manager performing action
+		employeeID: application.userID, // must be non-null now
 		actionType: 'REJECT LEAVE',
 		action: 'Leave rejected',
 		targetTable: 'leave_applications',

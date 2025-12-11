@@ -3,12 +3,10 @@ import { pgEnum } from 'drizzle-orm/pg-core';
 export const roleEnum = pgEnum('role', ['Manager', 'Employee']);
 export const statusEnum = pgEnum('status', ['Active', 'Inactive']);
 export const empTypeEnum = pgEnum('emp_type', ['Permanent', 'Probation', 'Intern']);
-export const sourceEnum = pgEnum('source_type', ['Web', 'Mobile']);
+export const sourceEnum = pgEnum('source_type', ['Web', 'Mobile', 'Auto-System']);
 export const punchEventEnum = pgEnum('punchEvent', [
 	'CheckIn',
 	'CheckOut',
-	'BreakStart',
-	'BreakEnd'
 ]);
 export const leaveStatusEnum = pgEnum('leave_status', [
 	'Pending',
@@ -24,18 +22,27 @@ export const durationStatusEnum = pgEnum('duration_status', [
 	'LateEntry',
 	'Overtime'
 ]);
+
+export const attendanceStatusEnum = pgEnum('attendance_status_enum', [
+	'present',
+	'absent',
+	'late',
+	'incomplete',
+	'complete',
+	'missing-punch'
+]);
+
 export const reportTypeEnum = pgEnum('report_type', [
 	'MonthlyAttendance',
 	'MonthlyLeave',
 	'LeaveBalance',
-	'LateInEarlyOut',
-	'Absenteeism'
 ]);
 export const notificationTypeEnum = pgEnum('notification_type', [
 	'LeaveStatus',
 	'MedicalReminder',
 	'SystemAlert',
-	'General'
+	'General',
+	'Attendance'
 ]);
 export const systemCategoryEnum = pgEnum('system_category', [
 	'General',

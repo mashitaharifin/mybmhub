@@ -2,20 +2,28 @@
 	import { Menu, LogOut, Flower, ChevronDown, ChevronRight, ChevronLeft } from 'lucide-svelte';
 	import { MANAGER_MENU, EMPLOYEE_MENU } from '$lib/utils/menu';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { writable } from 'svelte/store';
 
 	export let userRole: string;
 	export let isCollapsed: boolean;
-	export let activePage: string;
 	export let onToggleCollapse: () => void;
+	export let activePage: string;
 
+	// Determine menu based on role
 	$: menu = userRole === 'Manager' ? MANAGER_MENU : EMPLOYEE_MENU;
 
-	// Store to track which menu items with submenus are expanded
+	// Track which menus with submenus are expanded
 	const expandedMenus = writable<Set<string>>(new Set());
 
-	const goToDashboard = () => goto('/dashboard');
-	const navigate = (path: string) => goto(path);
+	// Reactive active page from current URL
+	import { get } from 'svelte/store';
+	$: activePage = $page.url.pathname;
+
+	// Navigate function
+	const navigate = (path: string) => {
+		goto(path);
+	};
 
 	// Toggle submenu expansion
 	const toggleSubmenu = (itemName: string, event: Event) => {
@@ -31,18 +39,14 @@
 		});
 	};
 
-	// Check if a menu item's submenu is expanded
-	const isSubmenuExpanded = (itemName: string) => {
-		let expanded = false;
-		expandedMenus.subscribe((value) => {
-			expanded = value.has(itemName);
-		})();
-		return expanded;
-	};
-
 	const logout = async () => {
 		await fetch('/auth/logout', { method: 'POST' });
-		window.location.href = '/auth/login'; // redirect after logout
+		window.location.href = '/auth/login';
+	};
+
+	// Check if menu item (or its children) is active
+	const isActive = (item: (typeof menu)[0]) => {
+		return activePage === item.path || item.submenu?.some((child) => child.path === activePage);
 	};
 </script>
 
@@ -59,19 +63,20 @@
 	{/if}
 
 	<!-- Logo + Collapse Sidebar -->
-	<!-- svelte-ignore a11y_click_events_have_key_events -->
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="flex items-center justify-between h-16 mb-4 px-2 rounded-3xl transition-all duration-200
            hover:bg-red-100 dark:hover:bg-red-800 hover:text-red-900 text-gray-700 dark:text-gray-300"
 	>
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		{#if !isCollapsed}
-			<!-- Expanded state -->
-			<div class="flex items-center cursor-pointer" on:click={goToDashboard}>
-				<Flower class="w-6 h-6 text-red-600 flex-shrink-0 transition-transform duration-200" />
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<div class="flex items-center cursor-pointer" on:click={() => navigate('/dashboard')}>
+				<Flower
+					class="w-6 h-6 text-red-600 hover:text-gray-900 dark:hover:text-white flex-shrink-0 transition-transform duration-200"
+				/>
 				<span
-					class="ml-3 text-lg font-bold text-gray-900 dark:text-white
-                 transition-colors duration-200"
+					class="ml-3 text-lg font-bold text-gray-900 dark:text-white transition-colors duration-200"
 				>
 					MyBM Hub
 				</span>
@@ -85,7 +90,6 @@
 				<ChevronLeft class="w-6 h-6" />
 			</button>
 		{:else}
-			<!-- Collapsed state -->
 			<button
 				on:click={onToggleCollapse}
 				class="w-full flex items-center justify-center p-3 rounded-xl
@@ -103,14 +107,17 @@
 		<ul>
 			{#each menu as item}
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<li class="my-1">
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
-					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div
-						class="flex items-center p-3 rounded-xl transition-all duration-200 cursor-pointer text-sm font-medium
-              hover:bg-red-100 dark:hover:bg-red-800 hover:text-red-900 text-gray-700 dark:text-gray-300"
-						class:bg-red-600={activePage === item.path}
-						class:text-white={activePage === item.path}
+						class="flex items-center p-3 rounded-lg transition-all duration-200 cursor-pointer text-sm font-medium
+text-gray-700 dark:text-gray-300
+hover:bg-red-50 dark:hover:bg-red-900/40
+hover:text-red-600 dark:hover:text-red-300
+active:scale-[0.98]"
+						class:bg-red-600={isActive(item)}
+						class:text-white={isActive(item)}
 						on:click={() => navigate(item.path)}
 					>
 						<svelte:component this={item.icon} class={`w-5 h-5 ${isCollapsed ? '' : 'mr-3'}`} />
@@ -131,12 +138,10 @@
 						{/if}
 					</div>
 
-					<!-- Submenu -->
 					{#if item.submenu && item.submenu.length > 0 && !isCollapsed && $expandedMenus.has(item.name)}
 						<ul class="ml-8 mt-1 space-y-1">
 							{#each item.submenu as child}
 								<li>
-									<!-- svelte-ignore a11y_no_static_element_interactions -->
 									<div
 										class="block px-2 py-1 rounded-lg text-sm transition-all duration-200 cursor-pointer
                       hover:bg-red-100 dark:hover:bg-red-800 hover:text-red-900 text-gray-600 dark:text-gray-400"
@@ -158,8 +163,11 @@
 	<!-- Logout -->
 	<div class="pt-4 border-t border-gray-200 dark:border-gray-700">
 		<button
-			class="w-full flex items-center p-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-100 dark:hover:bg-red-800 hover:text-gray-400
-"
+			class="w-full flex items-center p-3 rounded-lg transition-all duration-200 cursor-pointer text-sm font-medium
+text-gray-700 dark:text-gray-300
+hover:bg-red-50 dark:hover:bg-red-900/40
+hover:text-red-600 dark:hover:text-red-300
+active:scale-[0.98]"
 			on:click={logout}
 		>
 			<LogOut class={`w-5 h-5 ${isCollapsed ? 'mr-0' : 'mr-3'}`} />

@@ -12,7 +12,6 @@ exports.attendance = (0, pg_core_1.pgTable)('attendance', {
     checkInTime: (0, pg_core_1.timestamp)('check_in_time'),
     checkOutTime: (0, pg_core_1.timestamp)('check_out_time'),
     totalHours: (0, pg_core_1.decimal)('total_hours', { precision: 5, scale: 2 }),
-    breakHours: (0, pg_core_1.decimal)('break_hours', { precision: 5, scale: 2 }),
     workedHours: (0, pg_core_1.decimal)('worked_hours', { precision: 5, scale: 2 }),
     isModified: (0, pg_core_1.integer)('is_modified').default(0),
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow(),

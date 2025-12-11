@@ -46,7 +46,7 @@
 
 	onMount(() => {
 		fetchMetricsData();
-		interval = setInterval(fetchMetricsData, 5000); // auto-refresh every 5s
+		interval = setInterval(fetchMetricsData, 10000); // auto-refresh every 5s
 	});
 
 	onDestroy(() => clearInterval(interval));
@@ -63,12 +63,12 @@
 				class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 transition-colors hover:bg-red-50 dark:hover:bg-red-800/20 flex justify-between items-center min-w-[350px]"
 			>
 				<div>
-					<div class="text-sm font-medium text-gray-500 dark:text-gray-400">{m.title}</div>
-					<div class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+					<div class="text-lg font-medium text-gray-800 dark:text-gray-200">{m.title}</div>
+					<div class="text-xl text-gray-500 dark:text-gray-400 mt-1">
 						{m.value !== null ? m.value : 'No data is available'}
 					</div>
 				</div>
-				<div class={`w-4 h-20 rounded-full ${m.color}`}></div>
+				<!-- <div class={`w-4 h-20 rounded-full ${m.color}`}></div> -->
 			</div>
 		{/each}
 	{/if}

@@ -216,7 +216,7 @@
 	</Card.Header>
 </Card.Root>
 
-<div class="space-y-6 p-6">
+<div class="space-y-6 pt-1 pb-6 px-6">
 	<!-- Main Content Card -->
 	<Card.Root class="w-full">
 		<Card.Content class="p-5">
@@ -232,7 +232,7 @@
 			{/if}
 
 			<Tabs.Root value={activeTab} onValueChange={(v) => (activeTab = v)}>
-				<Tabs.List class="mb-3 border-b pb-2">
+				<Tabs.List class="mb-1 border-b pb-1 -mt-1">
 					<Tabs.Trigger value="profile" class="px-4 py-2">
 						<UserCircle2 class="w-4 h-4 mr-2" />My Profile
 					</Tabs.Trigger>

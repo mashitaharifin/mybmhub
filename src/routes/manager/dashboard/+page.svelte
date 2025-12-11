@@ -3,7 +3,7 @@
 	import ClockWidget from './ClockWidget.svelte';
 	import QuickProfileCard from './QuickProfileCard.svelte';
 	import PendingLeaveRequests from './PendingLeaveRequests.svelte';
-	import TeamAttendanceStatus from './TeamAttendanceStatus.svelte';
+	import TeamRecentActivities from './TeamRecentActivities.svelte';
 	import TeamMetricsSnapshot from './TeamMetricsSnapshot.svelte';
 	import DashboardCalendar from './DashboardCalendar.svelte';
 </script>
@@ -31,7 +31,7 @@ glance."
 
 	<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 		<PendingLeaveRequests />
-		<TeamAttendanceStatus />
+		<TeamRecentActivities />
 		<DashboardCalendar />
 	</div>
 </div>

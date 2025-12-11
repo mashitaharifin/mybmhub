@@ -12,11 +12,11 @@
 	} from '$lib/components/ui/breadcrumb';
 
 	import { Printer, LayoutGrid, Table as TableIcon, Search } from 'lucide-svelte';
-
+	import Button from '$lib/components/ui/button.svelte';
 	import LeaveBalanceCards from '../components/LeaveBalanceCardsManager.svelte';
 	import LeaveBalanceTable from '../components/LeaveBalanceTableManager.svelte';
 
-	import { fetchExcelExport } from '$lib/utils/exportHelpers';
+	import { exportElementToPDF } from '$lib/utils/exportHelpers';
 
 	// State variables
 	let employees: { id: number; name: string }[] = [];
@@ -133,9 +133,19 @@
 
 	async function handleExport() {
 		try {
-			await fetchExcelExport(leaveBalancesDisplayed, 'Employee Leave Balances', {
-				name: 'My Company'
-			});
+			const element = document.getElementById('leave-balance-export');
+			if (!element) {
+				showAlert('Export failed: export container not found', 'error');
+				return;
+			}
+
+			await exportElementToPDF(
+				element,
+				'Employee Leave Balances.pdf',
+				'Employee Leave Balances',
+				company
+			);
+
 			showAlert('Export successful', 'success');
 		} catch (err) {
 			console.error(err);
@@ -143,7 +153,35 @@
 		}
 	}
 
+	let company: {
+		logoPath?: string;
+		name?: string;
+		address?: string;
+		country?: string;
+		email?: string;
+		phone?: string;
+		regNo?: string;
+	} = {};
+
+	async function loadImageAsDataURL(url: string): Promise<string> {
+		const res = await fetch(url);
+		const blob = await res.blob();
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader();
+			reader.onloadend = () => resolve(reader.result as string);
+			reader.onerror = reject;
+			reader.readAsDataURL(blob);
+		});
+	}
+
 	onMount(async () => {
+		try {
+			const res = await fetch('/api/system-settings/company-profile');
+			const data = await res.json();
+			if (data.success) company = data.company;
+		} catch (err) {
+			console.error('Failed to fetch company info:', err);
+		}
 		await loadEmployees();
 		await loadLeaveBalances();
 	});
@@ -207,174 +245,163 @@
 	</Card.Header>
 
 	<Card.Content>
-		{#if alertMessage}
-			<Alert.Root variant={alertVariant}>
-				<Alert.Title
-					>{alertVariant === 'success'
-						? 'Success'
-						: alertVariant === 'error'
-							? 'Error'
-							: 'Info'}</Alert.Title
-				>
-				<Alert.Description>{alertMessage}</Alert.Description>
-			</Alert.Root>
-		{/if}
-
-		<!-- Top Controls -->
-		<div class="flex flex-wrap justify-between mb-4 items-center gap-4">
-			<!-- Left: Employee Filter + Search -->
-			<div class="flex flex-wrap items-center gap-3">
-				<div class="flex flex-col text-sm font-medium">
-					<label for="employee" class="text-gray-700 dark:text-gray-300">Employee</label>
-
-					<select
-						id="employee"
-						bind:value={employeeID}
-						on:change={() => loadLeaveBalances()}
-						class="rounded-lg border px-2 py-1 text-sm dark:bg-gray-800 dark:text-gray-300"
+		<div id="leave-balance-export">
+			{#if alertMessage}
+				<Alert.Root variant={alertVariant}>
+					<Alert.Title
+						>{alertVariant === 'success'
+							? 'Success'
+							: alertVariant === 'error'
+								? 'Error'
+								: 'Info'}</Alert.Title
 					>
-						<option value="">All Employees</option>
-						{#each employees as e}
-							<option value={e.id}>{e.name}</option>
-						{/each}
-					</select>
-				</div>
+					<Alert.Description>{alertMessage}</Alert.Description>
+				</Alert.Root>
+			{/if}
 
-				<!-- Search Only Works for All Employees -->
-				<div class="flex flex-col text-sm font-medium">
-					<label for="search-employee" class="text-gray-700 dark:text-gray-300">Search</label>
-					<div class="flex items-center space-x-2">
-						<input
-							type="search"
-							placeholder="Search employee name..."
-							bind:value={searchTerm}
-							on:keydown={handleSearchKey}
-							class="rounded-lg border px-3 py-1 text-sm w-64 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700"
-							aria-label="Search employee name"
-							disabled={employeeID !== ''}
-						/>
+			<!-- Top Controls -->
+			<div class="flex flex-wrap justify-between mb-4 items-center gap-4">
+				<!-- Left: Employee Filter + Search -->
+				<div class="flex flex-wrap items-center gap-3">
+					<div class="flex flex-col text-sm font-medium">
+						<label for="employee" class="text-gray-700 dark:text-gray-300">Employee</label>
 
-						<button
-							on:click={handleSearchClick}
-							class="p-2 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-							aria-label="Search button"
-							disabled={employeeID !== ''}
+						<select
+							id="employee"
+							bind:value={employeeID}
+							on:change={() => loadLeaveBalances()}
+							class="rounded-lg border border-gray-300 px-2 py-1 text-sm bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-red-500 outline-none transition min-w-[140px]"
 						>
-							<Search class="w-4 h-4" />
-						</button>
+							<option value="">All Employees</option>
+							{#each employees as e}
+								<option value={e.id}>{e.name}</option>
+							{/each}
+						</select>
+					</div>
+
+					<!-- Search Only Works for All Employees -->
+					<div class="flex flex-col text-sm font-medium">
+						<label for="search-employee" class="text-gray-700 dark:text-gray-300">Search</label>
+						<div class="flex items-center space-x-2">
+							<input
+								type="search"
+								placeholder="Search employee name..."
+								bind:value={searchTerm}
+								on:keydown={handleSearchKey}
+								class="text-sm rounded-lg border border-gray-300 bg-white p-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-red-500 outline-none transition min-w-[140px]"
+								aria-label="Search employee name"
+								disabled={employeeID !== ''}
+							/>
+
+							<Button on:click={handleSearchClick} title="Search" disabled={employeeID !== ''}>
+								<Search class="w-4 h-4" />
+							</Button>
+						</div>
 					</div>
 				</div>
+
+				<!-- Right: View Toggle + Export -->
+				<div class="flex gap-2">
+					<Button
+						on:click={() => toggleView('cards')}
+						variant={viewMode === 'cards' ? 'default' : 'outline'}
+						title="Cards View"
+					>
+						<LayoutGrid class="w-4 h-4" />
+					</Button>
+
+					<Button
+						on:click={() => toggleView('table')}
+						variant={viewMode === 'table' ? 'default' : 'outline'}
+						title="Table View"
+					>
+						<TableIcon class="w-4 h-4" />
+					</Button>
+
+					<Button on:click={handleExport} title="Export PDF">
+						<Printer class="w-4 h-4" />
+					</Button>
+				</div>
 			</div>
 
-			<!-- Right: View Toggle + Export -->
-			<div class="flex items-center space-x-2">
-				<button
-					on:click={() => toggleView('cards')}
-					class="p-2 rounded-md transition-colors {viewMode === 'cards'
-						? 'bg-primary text-primary-foreground'
-						: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}"
-					title="Cards View"
-				>
-					<LayoutGrid class="w-5 h-5" />
-				</button>
+			<!-- Main Content -->
+			{#if loading}
+				<div class="text-gray-500 dark:text-gray-400">Loading leave balances...</div>
+			{:else if error}
+				<div class="text-red-500">{error}</div>
+			{:else if groupedLeave.length === 0}
+				<div class="text-gray-500 dark:text-gray-400">No leave balances found.</div>
+			{:else if viewMode === 'cards'}
+				<!-- CARDS VIEW -->
+				<div class="space-y-6">
+					{#each groupedLeave as group (group.employeeName)}
+						<div
+							class="bg-white dark:bg-gray-800 rounded-lg shadow border dark:border-gray-700 overflow-hidden"
+						>
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
+							<!-- svelte-ignore a11y_no_static_element_interactions -->
+							<div
+								class="flex items-center justify-between px-4 py-3 cursor-pointer"
+								on:click={() => toggleEmployeeSection(group.employeeName)}
+							>
+								<div>
+									<div class="text-sm font-semibold text-gray-700 dark:text-gray-100">
+										{group.employeeName}
+									</div>
+									<div class="text-xs text-gray-500 dark:text-gray-400">
+										{group.items.length} leave type{group.items.length > 1 ? 's' : ''}
+									</div>
+								</div>
 
-				<button
-					on:click={() => toggleView('table')}
-					class="p-2 rounded-md transition-colors {viewMode === 'table'
-						? 'bg-primary text-primary-foreground'
-						: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}"
-					title="Table View"
-				>
-					<TableIcon class="w-5 h-5" />
-				</button>
+								<div class="text-sm text-gray-500 dark:text-gray-300">
+									{expandedEmployees.has(group.employeeName) ? '▲' : '▼'}
+								</div>
+							</div>
 
-				<button
-					on:click={handleExport}
-					class="p-2 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-					title="Export to PDF"
-				>
-					<Printer class="w-5 h-5" />
-				</button>
-			</div>
+							{#if expandedEmployees.has(group.employeeName)}
+								<div class="p-4">
+									<LeaveBalanceCards {group} />
+								</div>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<!-- TABLE VIEW -->
+				<div class="space-y-4">
+					{#each groupedLeave as group (group.employeeName)}
+						<div
+							class="bg-white dark:bg-gray-800 rounded-lg shadow border dark:border-gray-700 overflow-hidden"
+						>
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
+							<!-- svelte-ignore a11y_no_static_element_interactions -->
+							<div
+								class="flex items-center justify-between px-4 py-3 cursor-pointer"
+								on:click={() => toggleEmployeeSection(group.employeeName)}
+							>
+								<div>
+									<div class="text-sm font-semibold text-gray-700 dark:text-gray-100">
+										{group.employeeName}
+									</div>
+									<div class="text-xs text-gray-500 dark:text-gray-400">
+										{group.items.length} leave type{group.items.length > 1 ? 's' : ''}
+									</div>
+								</div>
+
+								<div class="text-sm text-gray-500 dark:text-gray-300">
+									{expandedEmployees.has(group.employeeName) ? '▲' : '▼'}
+								</div>
+							</div>
+
+							{#if expandedEmployees.has(group.employeeName)}
+								<div class="p-4 overflow-x-auto">
+									<LeaveBalanceTable {group} />
+								</div>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			{/if}
 		</div>
-
-		<!-- Main Content -->
-		{#if loading}
-			<div class="text-gray-500 dark:text-gray-400">Loading leave balances...</div>
-		{:else if error}
-			<div class="text-red-500">{error}</div>
-		{:else if groupedLeave.length === 0}
-			<div class="text-gray-500 dark:text-gray-400">No leave balances found.</div>
-		{:else if viewMode === 'cards'}
-			<!-- CARDS VIEW -->
-			<div class="space-y-6">
-				{#each groupedLeave as group (group.employeeName)}
-					<div
-						class="bg-white dark:bg-gray-800 rounded-lg shadow border dark:border-gray-700 overflow-hidden"
-					>
-						<!-- svelte-ignore a11y_click_events_have_key_events -->
-						<!-- svelte-ignore a11y_no_static_element_interactions -->
-						<div
-							class="flex items-center justify-between px-4 py-3 cursor-pointer"
-							on:click={() => toggleEmployeeSection(group.employeeName)}
-						>
-							<div>
-								<div class="text-sm font-semibold text-gray-700 dark:text-gray-100">
-									{group.employeeName}
-								</div>
-								<div class="text-xs text-gray-500 dark:text-gray-400">
-									{group.items.length} leave type{group.items.length > 1 ? 's' : ''}
-								</div>
-							</div>
-
-							<div class="text-sm text-gray-500 dark:text-gray-300">
-								{expandedEmployees.has(group.employeeName) ? '▲' : '▼'}
-							</div>
-						</div>
-
-						{#if expandedEmployees.has(group.employeeName)}
-							<div class="p-4">
-								<LeaveBalanceCards {group} />
-							</div>
-						{/if}
-					</div>
-				{/each}
-			</div>
-		{:else}
-			<!-- TABLE VIEW -->
-			<div class="space-y-4">
-				{#each groupedLeave as group (group.employeeName)}
-					<div
-						class="bg-white dark:bg-gray-800 rounded-lg shadow border dark:border-gray-700 overflow-hidden"
-					>
-						<!-- svelte-ignore a11y_click_events_have_key_events -->
-						<!-- svelte-ignore a11y_no_static_element_interactions -->
-						<div
-							class="flex items-center justify-between px-4 py-3 cursor-pointer"
-							on:click={() => toggleEmployeeSection(group.employeeName)}
-						>
-							<div>
-								<div class="text-sm font-semibold text-gray-700 dark:text-gray-100">
-									{group.employeeName}
-								</div>
-								<div class="text-xs text-gray-500 dark:text-gray-400">
-									{group.items.length} leave type{group.items.length > 1 ? 's' : ''}
-								</div>
-							</div>
-
-							<div class="text-sm text-gray-500 dark:text-gray-300">
-								{expandedEmployees.has(group.employeeName) ? '▲' : '▼'}
-							</div>
-						</div>
-
-						{#if expandedEmployees.has(group.employeeName)}
-							<div class="p-4 overflow-x-auto">
-								<LeaveBalanceTable {group} />
-							</div>
-						{/if}
-					</div>
-				{/each}
-			</div>
-		{/if}
 	</Card.Content>
 </Card.Root>

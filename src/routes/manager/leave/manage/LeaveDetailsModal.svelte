@@ -2,6 +2,7 @@
 	import LeaveStatusBadge from '$lib/components/ui/LeaveStatusBadge.svelte';
 	import Button from '$lib/components/ui/button.svelte';
 	import { Eye } from 'lucide-svelte';
+	import { format } from '$lib/utils/formatHelpers';
 
 	export let application: any;
 	export let onClose: () => void;
@@ -32,6 +33,12 @@
 					<p class="text-sm font-medium text-gray-500 dark:text-gray-400">Duration</p>
 					<p class="text-gray-800 dark:text-gray-200">
 						{application.duration} day{application.duration > 1 ? 's' : ''}
+					</p>
+				</div>
+				<div>
+					<p class="text-sm font-medium text-gray-500 dark:text-gray-400">Applied On</p>
+					<p class="text-gray-800 dark:text-gray-200">
+						{format.timestamp(application.applicationDate)}
 					</p>
 				</div>
 			</div>
