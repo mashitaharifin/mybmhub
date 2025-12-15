@@ -304,7 +304,7 @@
 				<div class="flex gap-2">
 					<Button
 						on:click={() => toggleView('cards')}
-						variant={viewMode === 'cards' ? 'default' : 'outline'}
+						variant={viewMode === 'cards' ? 'default' : 'primary'}
 						title="Cards View"
 					>
 						<LayoutGrid class="w-4 h-4" />
@@ -312,7 +312,7 @@
 
 					<Button
 						on:click={() => toggleView('table')}
-						variant={viewMode === 'table' ? 'default' : 'outline'}
+						variant={viewMode === 'table' ? 'default' : 'primary'}
 						title="Table View"
 					>
 						<TableIcon class="w-4 h-4" />

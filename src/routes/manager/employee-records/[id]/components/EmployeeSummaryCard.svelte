@@ -66,21 +66,28 @@
 <Card.Root class="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow space-y-4">
 	<Card.Header class="flex items-center justify-between">
 		<div class="flex items-center gap-4">
-			<div class="relative">
-				{#if emp.avatarUrl}
-					<img
-						src={emp.avatarUrl}
-						alt={emp.name}
-						class="w-16 h-16 rounded-full object-cover border border-gray-300 dark:border-gray-700"
-					/>
-				{:else}
-					<div
-						class="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-xl font-bold text-blue-700 dark:text-blue-400"
-					>
-						{initials}
-					</div>
-				{/if}
+			<!-- Avatar with gradient border -->
+			<div
+				class="w-18 h-18 p-1 rounded-full bg-gradient-to-br from-red-500 via-orange-400 to-pink-500
+                 flex items-center justify-center"
+			>
+				<div
+					class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-900 flex items-center justify-center overflow-hidden"
+				>
+					{#if emp.avatarUrl}
+						<img
+							src={emp.avatarUrl}
+							alt={emp.name}
+							class="w-full h-full object-cover rounded-full"
+						/>
+					{:else}
+						<div class="text-xl font-bold text-red-700 dark:text-red-400">
+							{initials}
+						</div>
+					{/if}
+				</div>
 			</div>
+
 			<div>
 				<Card.Title class="text-xl font-semibold dark:text-white">{emp.name}</Card.Title>
 				<p class="text-gray-500 dark:text-gray-400">
@@ -138,3 +145,4 @@
 		</div>
 	</Card.Content>
 </Card.Root>
+

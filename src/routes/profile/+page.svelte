@@ -13,6 +13,7 @@
 	} from '$lib/components/ui/breadcrumb';
 	import { Camera, UserCircle2, Lock, BriefcaseBusiness } from 'lucide-svelte';
 	import { invalidateAll } from '$app/navigation';
+	import { onMount } from 'svelte';
 
 	// --- Load server data ---
 	export let data: { profile: any };
@@ -37,6 +38,8 @@
 	let phone = profileData.phone || '';
 	let address = profileData.address || '';
 	let avatarUrl = profileData.avatarUrl || '';
+	let departments: { id: number; deptName: string }[] = [];
+	let departmentName = '';
 
 	let currentPassword = '';
 	let newPassword = '';
@@ -177,6 +180,24 @@
 			: activeTab === 'company'
 				? 'Company Information'
 				: 'My Profile';
+
+	onMount(async () => {
+		try {
+			const res = await fetch('/profile/api/departments');
+			const json = await res.json();
+
+			if (res.ok && json.success) {
+				departments = json.data;
+
+				// Find department name by ID
+				const dept = departments.find((d) => d.id === profileData.department);
+				departmentName = dept ? dept.deptName : '-';
+			}
+		} catch (err) {
+			console.error('Failed to fetch department name:', err);
+			departmentName = '-';
+		}
+	});
 </script>
 
 <svelte:head>
@@ -250,20 +271,24 @@
 						<!-- Avatar Section -->
 						<div class="flex items-center gap-8 p-6 bg-white dark:bg-gray-800 rounded-lg">
 							<div class="relative w-28 h-28">
-								{#if avatarUrl}
-									<!-- svelte-ignore a11y_img_redundant_alt -->
-									<img
-										src={avatarUrl}
-										alt="Profile picture"
-										class="rounded-full object-cover w-28 h-28 border-2 border-gray-200 dark:border-gray-600"
-									/>
-								{:else}
-									<div
-										class="w-28 h-28 rounded-full flex items-center justify-center bg-gray-200 dark:bg-gray-700 text-3xl font-semibold text-gray-600 dark:text-gray-300 border-2 border-gray-200 dark:border-gray-600"
-									>
-										{name ? name.charAt(0).toUpperCase() : 'U'}
-									</div>
-								{/if}
+								<!-- svelte-ignore a11y_img_redundant_alt -->
+								<div
+									class="w-32 h-32 p-1 rounded-full bg-gradient-to-br from-red-500 via-orange-400 to-pink-500 flex items-center justify-center"
+								>
+									{#if avatarUrl}
+										<img
+											src={avatarUrl}
+											alt="Profile picture"
+											class="rounded-full object-cover w-28 h-28"
+										/>
+									{:else}
+										<div
+											class="w-28 h-28 rounded-full flex items-center justify-center bg-gray-200 dark:bg-gray-700 text-3xl font-semibold text-gray-600 dark:text-gray-300"
+										>
+											{name ? name.charAt(0).toUpperCase() : 'U'}
+										</div>
+									{/if}
+								</div>
 
 								<label
 									for="avatar-upload"
@@ -296,7 +321,7 @@
 								<!-- svelte-ignore a11y_label_has_associated_control -->
 								<label class="text-sm font-semibold text-gray-700 dark:text-gray-300"> Name </label>
 								<input
-									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
 									bind:value={name}
 									disabled={!isEditing}
 								/>
@@ -308,7 +333,7 @@
 									Email
 								</label>
 								<input
-									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
 									type="email"
 									bind:value={email}
 									disabled={!isEditing}
@@ -324,7 +349,7 @@
 									Phone
 								</label>
 								<input
-									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
 									bind:value={phone}
 									disabled={!isEditing}
 								/>
@@ -336,7 +361,7 @@
 									Address
 								</label>
 								<input
-									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
 									bind:value={address}
 									disabled={!isEditing}
 								/>
@@ -348,7 +373,7 @@
 							{#if !isEditing}
 								<div class="flex justify-end">
 									<Button
-										variant="outline"
+										variant="primary"
 										on:click={() => (isEditing = true)}
 										class="flex items-center gap-2"
 									>
@@ -378,9 +403,7 @@
 
 							<div>
 								<p class="font-semibold text-sm text-gray-700 dark:text-gray-300">Department</p>
-								<p class="text-sm text-gray-500 dark:text-gray-400">
-									{profileData.department || '-'}
-								</p>
+								<p class="text-sm text-gray-500 dark:text-gray-400">{departmentName || '-'}</p>
 							</div>
 
 							<div>
@@ -415,7 +438,7 @@
 									>Current Password</label
 								>
 								<input
-									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
 									type="password"
 									bind:value={currentPassword}
 								/>
@@ -428,7 +451,7 @@
 									>New Password</label
 								>
 								<input
-									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
 									type="password"
 									bind:value={newPassword}
 								/>
@@ -452,7 +475,7 @@
 									>Confirm Password</label
 								>
 								<input
-									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
 									type="password"
 									bind:value={confirmPassword}
 								/>

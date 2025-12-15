@@ -1,5 +1,4 @@
 // src/lib/server/notifications/broadcaster.ts
-
 export interface NotificationRecord {
 	id: number;
 	recipientID: number; // This should match your database schema

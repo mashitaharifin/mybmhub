@@ -114,10 +114,10 @@
 			Showing {offset + 1}-{Math.min(offset + limit, totalRecords)} of {totalRecords} records
 		</div>
 		<div class="flex space-x-2">
-			<Button variant="outline" on:click={prevPage} disabled={offset === 0}>
+			<Button variant="primary" on:click={prevPage} disabled={offset === 0}>
 				<ChevronLeft class="w-4 h-4" />
 			</Button>
-			<Button variant="outline" on:click={nextPage} disabled={offset + limit >= totalRecords}>
+			<Button variant="primary" on:click={nextPage} disabled={offset + limit >= totalRecords}>
 				<ChevronRight class="w-4 h-4" />
 			</Button>
 		</div>

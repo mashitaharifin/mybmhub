@@ -254,7 +254,7 @@
 				{/if}
 
 				<div class="flex justify-end gap-2 mt-3">
-					<Button type="button" variant="outline" on:click={cancelForm}>Cancel</Button>
+					<Button type="button" variant="secondary" on:click={cancelForm}>Cancel</Button>
 					<Button type="submit">{geoForm.id ? 'Update' : 'Save'}</Button>
 				</div>
 			</form>

@@ -413,7 +413,7 @@
 
 		<!-- Actions -->
 		<div class="flex justify-end gap-2 mt-4">
-			<Button variant="outline" on:click={closeForm}>Cancel</Button>
+			<Button variant="secondary" on:click={closeForm}>Cancel</Button>
 			<Button on:click={submitLeave} disabled={loading}>
 				{loading ? 'Submitting...' : 'Submit'}
 			</Button>

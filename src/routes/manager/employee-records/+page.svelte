@@ -302,7 +302,7 @@
 				</div>
 
 				<div class="flex justify-end gap-2 mt-4">
-					<Button variant="outline" type="button" on:click={cancelForm}>Cancel</Button>
+					<Button variant="secondary" type="button" on:click={cancelForm}>Cancel</Button>
 					<Button type="submit">{isEditing ? 'Update' : 'Save'}</Button>
 				</div>
 			</form>

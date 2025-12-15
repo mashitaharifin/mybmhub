@@ -13,7 +13,7 @@
 		<p class="text-gray-700 dark:text-gray-300">{message}</p>
 
 		<div class="flex justify-end gap-2 mt-4">
-			<Button variant="outline" class="bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-gray-100" on:click={() => dispatch('cancel')}>No</Button>
+			<Button variant="secondary" class="bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-gray-100" on:click={() => dispatch('cancel')}>No</Button>
 			<Button class="bg-red-600 dark:bg-red-500 text-white" on:click={() => dispatch('confirm')}>Yes, I'am sure</Button>
 		</div>
 	</div>

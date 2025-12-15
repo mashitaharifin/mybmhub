@@ -124,7 +124,7 @@
 			{/each}
 
 			<div class="flex justify-end gap-2">
-				<Button variant="outline" on:click={reset} disabled={isLoading}>Reset</Button>
+				<Button variant="default" on:click={reset} disabled={isLoading}>Reset</Button>
 				<Button on:click={saveNotifications} disabled={isLoading}>
 					{isLoading ? 'Saving...' : 'Save'}
 				</Button>

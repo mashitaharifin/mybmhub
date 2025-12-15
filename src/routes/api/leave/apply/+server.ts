@@ -4,6 +4,28 @@ import path from 'path';
 import { json } from '@sveltejs/kit';
 import { applyLeave } from '$lib/server/leave/leaveService';
 import { calculateLeaveDays } from '$lib/server/leave/calculateLeaveDays';
+import { notifyManagerLeaveSubmitted } from '$lib/server/notifications/leave';
+import { employees, leaveTypes } from '$lib/server/db/schema';
+import { db } from '$lib/server/db';
+import { eq } from 'drizzle-orm';
+
+async function getEmployeeName(userId: number): Promise<string> {
+	const rows = await db
+		.select({ name: employees.name })
+		.from(employees)
+		.where(eq(employees.userId, userId));
+
+	return rows[0]?.name ?? 'Employee';
+}
+
+async function getLeaveTypeName(leaveTypeID: number): Promise<string> {
+	const rows = await db
+		.select({ name: leaveTypes.typeName })
+		.from(leaveTypes)
+		.where(eq(leaveTypes.id, leaveTypeID));
+
+	return rows[0]?.name ?? 'Leave';
+}
 
 export async function POST({ request, locals }) {
 	const user = locals.user;
@@ -82,7 +104,7 @@ export async function POST({ request, locals }) {
 	}
 
 	// ---------------------------
-	// Call leave service
+	// Call leave service and save leave
 	// ---------------------------
 	try {
 		const application = await applyLeave({
@@ -94,6 +116,26 @@ export async function POST({ request, locals }) {
 			halfDay,
 			halfDaySession,
 			docImg: savedDocPath
+		});
+
+		// Safety check for leaveTypeID
+		if (!application.leaveTypeID) {
+			throw new Error('Invalid leave type ID in application');
+		}
+
+		// Fetch employee name and leave type name
+		const employeeName = await getEmployeeName(user.id);
+		const leaveType = await getLeaveTypeName(application.leaveTypeID!);
+
+		// Notify manager after leave is submitted
+		await notifyManagerLeaveSubmitted({
+			employeeId: user.id,
+			employeeName,
+			leaveType,
+			startDate: application.startDate,
+			endDate: application.endDate,
+			durationDays: duration,
+			leaveId: application.id
 		});
 
 		return json({ success: true, data: { id: application.id, duration } });

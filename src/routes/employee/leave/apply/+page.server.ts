@@ -23,8 +23,6 @@ export const load = async ({ locals }) => {
 			duration: leaveApplications.duration,
 			applicationDate: leaveApplications.applicationDate,
 			status: leaveApplications.status,
-
-			// extra fields needed for detailed modal
 			reason: leaveApplications.reason,
 			halfDay: leaveApplications.halfDay,
 			halfDaySession: leaveApplications.halfDaySession,

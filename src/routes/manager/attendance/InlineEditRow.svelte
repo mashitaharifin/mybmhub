@@ -266,7 +266,7 @@
 
 	<!-- Actions -->
 	<div class="flex justify-end gap-2">
-		<Button variant="outline" type="button" on:click={cancel}>Cancel</Button>
+		<Button variant="secondary" type="button" on:click={cancel}>Cancel</Button>
 		<Button on:click={save} disabled={saving || r.status === 'Complete'}>
 			{saving ? 'Saving...' : r.status === 'Complete' ? 'Cannot Modify Complete Record' : 'Save'}
 		</Button>

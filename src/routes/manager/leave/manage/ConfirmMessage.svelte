@@ -68,13 +68,15 @@
 
 			<!-- Buttons -->
 			<div class="flex justify-end space-x-3 pt-4">
-				<Button variant="outline" on:click={onCancel}>Cancel</Button>
+				<Button variant="secondary" on:click={onCancel}>Cancel</Button>
 				<Button
-					variant={config.type === 'reject' ? 'destructive' : 'default'}
+					variant={config.type === 'approve' || config.type === 'cancel'
+						? 'primary'
+						: 'destructive'}
 					on:click={handleConfirm}
 					disabled={config.type === 'reject' && config.requiresInput && !rejectReason.trim()}
 				>
-					{config.type === 'approve' ? 'Approve' : config.type === 'cancel' ? 'Cancel' : 'Reject'}
+					{config.type === 'approve' ? 'Approve Leave' : config.type === 'cancel' ? 'Cancel Leave' : 'Reject Leave'}
 				</Button>
 			</div>
 		</div>

@@ -181,7 +181,7 @@
 					<!-- Cards View Button -->
 					<Button
 						on:click={() => toggleView('cards')}
-						variant={viewMode === 'cards' ? 'default' : 'outline'}
+						variant={viewMode === 'cards' ? 'default' : 'primary'}
 						title="Cards View"
 						aria-label="Switch to cards view"
 					>
@@ -191,7 +191,7 @@
 					<!-- Table View Button -->
 					<Button
 						on:click={() => toggleView('table')}
-						variant={viewMode === 'table' ? 'default' : 'outline'}
+						variant={viewMode === 'table' ? 'default' : 'primary'}
 						title="Table View"
 						aria-label="Switch to table view"
 					>

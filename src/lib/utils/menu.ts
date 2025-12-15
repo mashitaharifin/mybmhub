@@ -27,7 +27,7 @@ export const MANAGER_MENU = [
 	{ name: 'Attendance', icon: CalendarCheck, path: '/manager/attendance' },
 	{ name: 'Employee Records', icon: Users, path: '/manager/employee-records' },
 	{ name: 'Reports', icon: BarChart, path: '/manager/reports' },
-	{ name: 'Notifications Centre', icon: Bell, path: '/manager/notifications' },
+	{ name: 'Notifications Centre', icon: Bell, path: '/notifications' },
 	{ name: 'System Settings', icon: Settings, path: '/manager/system-settings' },
 	{ name: 'Recent Activity', icon: Activity, path: '/manager/recent-activity' }
 	//{ name: 'Audit Logs', icon: ScrollText, path: '/manager/audit-logs' }
@@ -46,7 +46,7 @@ export const EMPLOYEE_MENU = [
 		]
 	},
 	{ name: 'Attendance', icon: CalendarCheck, path: '/employee/attendance'},
-	{ name: 'Notifications Centre', icon: Bell, path: '/employee/notifications' },
+	{ name: 'Notifications Centre', icon: Bell, path: '/notifications' },
 	{ name: 'Recent Activity', icon: Activity, path: '/employee/recent-activity' }
 ];
 

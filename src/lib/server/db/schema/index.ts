@@ -5,7 +5,7 @@ export * from './employee';
 export * from './geofenceLocation';
 export * from './punch';
 export * from './attendance';
-export * from './lateReasonLookup';
+export * from './lateExplanation';
 export * from './leaveType';
 export * from './leaveApplication';
 export * from './leaveBalance';

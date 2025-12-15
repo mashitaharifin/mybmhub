@@ -246,7 +246,7 @@
 				</div>
 
 				<div class="flex justify-end gap-2 mt-4">
-					<Button type="button" variant="outline" on:click={cancelForm}>Cancel</Button>
+					<Button type="button" variant="secondary" on:click={cancelForm}>Cancel</Button>
 					<Button type="submit">{patternForm.id ? 'Update' : 'Save'}</Button>
 				</div>
 			</form>

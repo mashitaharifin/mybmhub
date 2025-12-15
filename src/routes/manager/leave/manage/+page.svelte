@@ -307,7 +307,7 @@
 
 			<!-- Reset Filter Button -->
 			<Button
-				variant="outline"
+				variant="primary"
 				on:click={() => {
 					statusFilter = '';
 					employeeFilter = '';

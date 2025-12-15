@@ -62,13 +62,13 @@
 	</label>
 
 	<div class="flex items-center gap-2">
-		<Button variant="outline" on:click={resetFilters} title="Reset">
+		<Button variant="primary" on:click={resetFilters} title="Reset">
 			<RotateCcw class="w-4 h-4" />
 		</Button>
 		<Button on:click={applyFilters} title="Apply">
 			<Filter class="w-4 h-4" />
 		</Button>
-		<Button variant="outline" on:click={doExport} title="Export PDF">
+		<Button variant="primary" on:click={doExport} title="Export PDF">
 			<Printer class="w-4 h-4" />
 		</Button>
 	</div>

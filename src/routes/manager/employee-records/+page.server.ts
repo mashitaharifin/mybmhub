@@ -9,6 +9,10 @@ import { fail, redirect, error } from '@sveltejs/kit';
 import argon2 from 'argon2';
 import { generateLeaveBalanceForEmployee } from '$lib/server/leave/generateBalance';
 import { date } from 'drizzle-orm/mysql-core';
+import {
+	notifyPasswordChangeRequired,
+	notifyManagerUserCreated
+} from '$lib/server/notifications/system';
 
 type LogAuditParams = {
 	userID: number;
@@ -162,6 +166,19 @@ export const actions: Actions = {
 				status: 'Active' as any
 			})
 			.returning({ id: users.id });
+
+		// Notify new user to change password
+		await notifyPasswordChangeRequired({
+			userId: newUser.id,
+			username: email.split('@')[0]
+		});
+
+		// Notify the manager that a new user has been created
+		await notifyManagerUserCreated({
+			managerUserId: locals.user.id, // current manager creating the employee
+			newUsername: email.split('@')[0],
+			role: role as any
+		});
 
 		const [newEmployee] = await db
 			.insert(employees)

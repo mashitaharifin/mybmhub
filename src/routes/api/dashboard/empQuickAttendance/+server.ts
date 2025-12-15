@@ -10,6 +10,7 @@ import {
 	employees,
 	systemSettings
 } from '$lib/server/db/schema';
+import { notifyPunchIn, notifyPunchOut } from '$lib/server/notifications/attendance';
 
 // --- Helper: fetch shift start and grace from system settings ---
 async function getShiftSettings() {
@@ -334,7 +335,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			eventTime: now,
 			locationLat: latitude,
 			locationLng: longitude,
-			accuracyMeters: accuracyMeters ?? null,
+			accuracyMeters: accuracyMeters ? Math.round(accuracyMeters) : null,
 			source: 'Web',
 			notes: withinGeofence ? 'Within geofence radius' : 'Outside geofence radius'
 		});
@@ -344,6 +345,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (actionType === 'IN') {
 			updatedData.autoPunchedOutReasonRequired = false; // ✔ cleared once punch in allowed
+
+			// Send punch in notification
+			await notifyPunchIn({
+				employeeUserId: user.id,
+				punchInTime: now.toISOString()
+			});
 		}
 
 		if (actionType === 'OUT') {
@@ -351,6 +358,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			const workedHours = calculateWorkedHours(todayAttendance.checkInTime, now);
 			updatedData.workedHours = workedHours.toString();
 			updatedData.totalHours = workedHours.toString();
+
+			// Send punch out notification
+			await notifyPunchOut({
+				employeeUserId: user.id,
+				punchOutTime: now.toISOString(),
+				totalHours: `${workedHours.toFixed(2)}h` // you can format as '8h 10m' if needed
+			});
 		}
 
 		const shiftDate = new Date(todayISO);

@@ -173,7 +173,7 @@
 					</div>
 				</div>
 				<div class="flex justify-end gap-2 mt-4">
-					<Button type="button" variant="outline" on:click={cancelForm} disabled={isSubmitting}>
+					<Button type="button" variant="secondary" on:click={cancelForm} disabled={isSubmitting}>
 						Cancel
 					</Button>
 					<Button type="submit" disabled={isSubmitting}>

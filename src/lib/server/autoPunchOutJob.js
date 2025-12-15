@@ -8,6 +8,7 @@ import {
 	notifications
 } from './db/schema';
 import { eq, and, isNull, gte, inArray } from 'drizzle-orm';
+import { notifyAutoPunchout } from '$lib/server/notifications/attendance';
 
 export async function autoPunchOutJob() {
 	try {
@@ -97,19 +98,38 @@ export async function autoPunchOutJob() {
 				.where(eq(employees.userId, record.userID))
 				.then((rows) => rows[0]);
 
-			await db.insert(auditLogs).values({
-				userID: record.userID,
-				employeeID: employeeRecord?.id ?? null,
-				actionType: 'AUTO PUNCH OUT',
-				action: 'Auto Punch Out',
-				targetTable: 'attendance',
-				targetID: record.id,
-				details: `${userName} was auto punched out at ${shiftEndTime.toLocaleString('en-MY', {
-					timeZone: 'Asia/Kuala_Lumpur',
-					hour12: false
-				})} for date ${yesterdayISO}`,
-				isUserVisible: false
-			});
+			try {
+				await db.insert(auditLogs).values({
+					userID: record.userID,
+					employeeID: employeeRecord?.id ?? null,
+					actionType: 'AUTO PUNCH OUT',
+					action: 'Auto Punch Out',
+					targetTable: 'attendance',
+					targetID: record.id,
+					details: `${userName} was auto punched out at ${shiftEndTime.toLocaleString('en-MY', {
+						timeZone: 'Asia/Kuala_Lumpur',
+						hour12: false
+					})} for date ${yesterdayISO}`,
+					isUserVisible: false
+				});
+				console.log(`Inserted audit log for user ${record.userID}`);
+			} catch (err) {
+				console.error('Failed to insert audit log:', err);
+			}
+
+			//  Send notification per auto-punched employee
+			const managers = await db
+				.select({ id: users.id })
+				.from(users)
+				.where(eq(users.role, 'Manager'));
+
+			for (const manager of managers) {
+				await notifyAutoPunchout({
+					employeeUserId: record.userID,
+					employeeName: userName,
+					punchDate: yesterdayISO
+				});
+			}
 		}
 
 		// TRACK REPEATED AUTO-PUNCH-OUTS (LAST 30 DAYS)

@@ -398,7 +398,7 @@
 			</div>
 			<div class="flex space-x-2">
 				<Button
-					variant="outline"
+					variant="primary"
 					on:click={prevPage}
 					disabled={offset === 0 || loading}
 					title="Previous page"
@@ -406,7 +406,7 @@
 					<ChevronLeft class="w-4 h-4" />
 				</Button>
 				<Button
-					variant="outline"
+					variant="primary"
 					on:click={nextPage}
 					disabled={offset + limit >= totalRecords || loading}
 					title="Next page"

@@ -102,7 +102,11 @@
 			}
 		} catch (err) {
 			console.error('Failed to fetch attendance', err);
-			showAlert('Connection Error: Failed to load attendance data', 'error');
+			toast({
+				title: 'Connection Error',
+				description: 'Failed to load attendance data. Please check your connection.',
+				variant: 'destructive'
+			});
 		}
 	}
 
@@ -126,7 +130,11 @@
 
 		const data = await res.json();
 		if (!data.success) {
-			showAlert(`Submission Failed: ${data.error || 'Failed to submit reason'}`, 'error');
+			toast({
+				title: 'Submission Failed',
+				description: `${data.error || 'Failed to submit reason'}`,
+				variant: 'destructive'
+			});
 			return false;
 		}
 		return true;
@@ -138,13 +146,21 @@
 
 	async function handleReasonSubmit() {
 		if (!reasonText.trim()) {
-			showAlert('Validation Error: Please enter a reason.', 'error');
+			toast({
+				title: 'Validation Error',
+				description: 'Please enter a reason.',
+				variant: 'destructive'
+			});
 			return;
 		}
 
 		const ok = await submitAutoPunchReason(pendingRecordId!, reasonText);
 		if (ok) {
-			showAlert('Reason Submitted Successfully! You can now punch in for today.', 'success');
+			toast({
+				title: 'Reason Submitted Successfully!',
+				description: 'You can now punch in for today.',
+				variant: 'success'
+			});
 			showReasonModal = false;
 			reasonText = '';
 			pendingRecordId = null;
@@ -155,22 +171,31 @@
 	const handlePunch = async () => {
 		// Check if day is already completed
 		if (dayCompleted) {
-			showAlert('Day Completed! You have already completed your attendance for today.', 'info');
+			toast({
+				title: 'Day Completed!',
+				description: 'You have already completed your attendance for today.',
+				variant: 'info'
+			});
 			return;
 		}
 
 		// Block Punch In Until Reason Submitted
 		if (showReasonModal) {
-			showAlert(
-				'Punch In Blocked! Please complete the auto punch-out reason form above before punching in.',
-				'error'
-			);
+			toast({
+				title: 'Punch In Blocked!',
+				description: 'Please complete the auto punch-out reason form above before punching in.',
+				variant: 'destructive'
+			});
 			return;
 		}
 
 		if (processing) return; // Prevent multiple clicks
 		if (!navigator.geolocation) {
-			showAlert('Geolocation is not supported by your browser.', 'error');
+			toast({
+				title: 'Geolocation Unsupported',
+				description: 'Geolocation is not supported by your browser.',
+				variant: 'destructive'
+			});
 			return;
 		}
 
@@ -224,14 +249,19 @@
 							dayCompleted = true;
 						}
 
-						// Punch Status Alert
+						// Punch Status Toast
 						if (statusMessage) {
-							showAlert(
-								`${statusMessage}: ${data.message}`,
-								data.punchTimeliness === 'late' ? 'error' : 'success'
-							);
+							toast({
+								title: data.punchTimeliness === 'late' ? 'Late Punch' : 'Punch Successful',
+								description: `${statusMessage}: ${data.message}`,
+								variant: data.punchTimeliness === 'late' ? 'destructive' : 'success'
+							});
 						} else {
-							showAlert(`Attendance Updated: ${data.message}`, 'success');
+							toast({
+								title: 'Attendance Updated',
+								description: data.message,
+								variant: 'success'
+							});
 						}
 
 						// Update UI state
@@ -250,13 +280,19 @@
 							}
 						}
 					} else {
-						showAlert(`Punch Failed: ${data.error || 'Unknown error occurred'}`, 'error');
+						toast({
+							title: 'Punch Failed',
+							description: `${data.error || 'Unknown error occurred'}`,
+							variant: 'destructive'
+						});
 					}
 				} catch (error) {
-					showAlert(
-						'Network Error: Failed to connect to server. Please check your connection.',
-						'error'
-					);
+					toast({
+						title: 'Network Error',
+						description: 'Failed to connect to server. Please check your connection.',
+						variant: 'destructive'
+					});
+
 					console.error('Punch error:', error);
 				} finally {
 					processing = false;
@@ -264,10 +300,12 @@
 			},
 			(error) => {
 				// Geolocation permission denied or error
-				showAlert(
-					`Location Error: ${error.message || 'Cannot access your location. Please enable location services.'}`,
-					'error'
-				);
+				toast({
+					title: 'Location Error:',
+					description: `${error.message || 'Cannot access your location. Please enable location services.'}`,
+					variant: 'destructive'
+				});
+
 				processing = false;
 			}
 		);
@@ -291,14 +329,6 @@
 	const isButtonDisabled = () => {
 		return showReasonModal || dayCompleted || processing;
 	};
-
-	let alertMessage: string | null = null;
-	let alertVariant: 'success' | 'error' | 'info' = 'info';
-
-	function showAlert(message: string, variant: 'success' | 'error' | 'info' = 'info') {
-		alertMessage = message;
-		alertVariant = variant;
-	}
 </script>
 
 <!-- 🧭 UI -->
@@ -336,11 +366,9 @@
 			<button
 				on:click={handlePunch}
 				disabled={isButtonDisabled()}
-				class="text-sm font-medium px-3 py-1.5 rounded-2xl border text-red-600 bg-white hover:bg-red-500 hover:text-white dark:bg-gray-700 dark:text-white dark:hover:bg-red-800 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-red-600 dark:disabled:hover:bg-gray-700 dark:disabled:hover:text-white"
-				class:bg-red-600={punchStatus !== 'IN' && !dayCompleted}
-				class:bg-red-500={punchStatus === 'IN' && !dayCompleted}
-				class:hover:bg-red-700={punchStatus !== 'IN' && !dayCompleted}
-				class:hover:bg-red-800={punchStatus === 'IN' && !dayCompleted}
+				class="text-sm font-medium px-3 py-1.5 rounded-2xl border border-red-600 text-red-600 bg-white hover:bg-red-500 hover:text-white dark:bg-gray-700 dark:text-white dark:hover:bg-red-800 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-red-600 dark:disabled:hover:bg-gray-700 dark:disabled:hover:text-white"
+				class:bg-red-100={punchStatus !== 'IN' && !dayCompleted}
+				class:bg-red-200={punchStatus === 'IN' && !dayCompleted}
 			>
 				{getPunchButtonText()}
 			</button>
@@ -355,32 +383,22 @@
 					<h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-3">
 						⚠️ Explanation Required
 					</h3>
-					<p class="text-gray-600 dark:text-gray-300 mb-4">
-						You were auto-punched out. Please explain why you didn't punch out manually:
+					<p class="text-gray-600 dark:text-gray-300 mb-4 text-sm">
+						You were auto-punched out yesterday. Please explain why you didn't punch out manually:
 					</p>
 
 					<textarea
 						bind:value={reasonText}
-						class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg mb-4 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+						class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg mb-4 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
 						placeholder="E.g., forgot, emergency, system issue..."
 						rows="3"
 					></textarea>
 
 					<div class="flex justify-end gap-3">
 						<button
-							on:click={() => {
-								showReasonModal = false;
-								reasonText = '';
-								pendingRecordId = null;
-							}}
-							class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-						>
-							Cancel
-						</button>
-						<button
 							on:click={handleReasonSubmit}
 							disabled={!reasonText.trim()}
-							class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
+							class="px-4 py-2 bg-red-600 text-white font-semibold rounded-2xl hover:bg-gray-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
 						>
 							Submit Reason
 						</button>

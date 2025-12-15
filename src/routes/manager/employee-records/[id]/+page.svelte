@@ -299,7 +299,7 @@
 							</label>
 						</div>
 						<div class="flex justify-end gap-2">
-							<Button variant="outline" type="button" on:click={cancelEdit}>Cancel</Button>
+							<Button variant="secondary" type="button" on:click={cancelEdit}>Cancel</Button>
 							<Button type="submit">Update</Button>
 						</div>
 					</form>

@@ -41,7 +41,7 @@
     <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Leave Balance</h2>
     <button
       on:click={applyLeave}
-      class="text-sm font-medium px-3 py-1.5 rounded-2xl border text-red-600 bg-white hover:bg-red-500 hover:text-white dark:bg-gray-700 dark:text-white dark:hover:bg-red-800 transition"
+      class="text-sm font-medium px-3 py-1.5 rounded-2xl border border-red-600 text-red-600 bg-white hover:bg-red-500 hover:text-white dark:bg-gray-700 dark:text-white dark:hover:bg-red-800 transition"
     >
       + Apply Leave
     </button>

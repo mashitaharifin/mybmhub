@@ -392,7 +392,7 @@
                 </div>
 
                 <div class="flex justify-end gap-2 mt-4">
-                    <Button type="button" variant="outline" on:click={() => toggleEdit(true)}>
+                    <Button type="button" variant="secondary" on:click={() => toggleEdit(true)}>
                         Cancel
                     </Button>
                     <Button type="submit">Save</Button>

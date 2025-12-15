@@ -196,7 +196,7 @@
 				{/if}
 
 				<div class="flex justify-end gap-2 mt-4">
-					<Button type="button" variant="outline" on:click={() => (showHolidayForm = false)}>
+					<Button type="button" variant="secondary" on:click={() => (showHolidayForm = false)}>
 						Cancel
 					</Button>
 					<Button type="submit">Save</Button>
