@@ -13,7 +13,7 @@
 		BreadcrumbSeparator,
 		BreadcrumbPage
 	} from '$lib/components/ui/breadcrumb';
-	import { RefreshCcw, Search, Printer } from 'lucide-svelte';
+	import { RefreshCcw, Printer } from 'lucide-svelte';
 	import Input from '$lib/components/ui/input.svelte';
 	import Button from '$lib/components/ui/button.svelte';
 	import { exportElementToPDF } from '$lib/utils/exportHelpers';
@@ -98,6 +98,9 @@
 			loading = false;
 		}
 	}
+
+	// Reactive search
+	$: (loadApplications(), employeeFilter, statusFilter); // triggers loadApplications when employeeFilter changes
 
 	// Event handlers
 	function handlePageChange(newOffset: number) {
@@ -291,19 +294,14 @@
 			<!-- Employee Filter -->
 			<div class="flex flex-col text-sm font-medium">
 				<!-- svelte-ignore a11y_label_has_associated_control -->
-				<label for="employee-search" class="text-gray-700 dark:text-gray-300 mb-1">Search</label>
+				<label for="employee-search" class="text-gray-700 dark:text-gray-300 mb-1">Search Employee</label>
 				<Input
 					id="employee-search"
-					placeholder="Search employee name"
+					placeholder="Name"
 					bind:value={employeeFilter}
 					class="text-sm rounded-lg border border-gray-300 bg-white p-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-red-500 outline-none transition min-w-[140px]"
 				/>
 			</div>
-
-			<!-- Apply Filter Button -->
-			<Button on:click={loadApplications} class="flex items-center gap-2" title="Apply Filter">
-				<Search class="w-4 h-4" />
-			</Button>
 
 			<!-- Reset Filter Button -->
 			<Button

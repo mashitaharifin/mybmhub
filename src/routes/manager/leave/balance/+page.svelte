@@ -11,7 +11,7 @@
 		BreadcrumbPage
 	} from '$lib/components/ui/breadcrumb';
 
-	import { Printer, LayoutGrid, Table as TableIcon, Search } from 'lucide-svelte';
+	import { Printer, LayoutGrid, Table as TableIcon, RotateCcw } from 'lucide-svelte';
 	import Button from '$lib/components/ui/button.svelte';
 	import LeaveBalanceCards from '../components/LeaveBalanceCardsManager.svelte';
 	import LeaveBalanceTable from '../components/LeaveBalanceTableManager.svelte';
@@ -187,7 +187,7 @@
 	});
 
 	// Reactive: re-apply search filter automatically (ONLY when "All Employees")
-	$: if (!employeeID) {
+	$: if (!employeeID && searchTerm !== undefined) {
 		applyClientFilters();
 	}
 
@@ -281,11 +281,13 @@
 
 					<!-- Search Only Works for All Employees -->
 					<div class="flex flex-col text-sm font-medium">
-						<label for="search-employee" class="text-gray-700 dark:text-gray-300">Search</label>
+						<label for="search-employee" class="text-gray-700 dark:text-gray-300"
+							>Search Employee</label
+						>
 						<div class="flex items-center space-x-2">
 							<input
 								type="search"
-								placeholder="Search employee name..."
+								placeholder="Name"
 								bind:value={searchTerm}
 								on:keydown={handleSearchKey}
 								class="text-sm rounded-lg border border-gray-300 bg-white p-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-red-500 outline-none transition min-w-[140px]"
@@ -293,8 +295,21 @@
 								disabled={employeeID !== ''}
 							/>
 
-							<Button on:click={handleSearchClick} title="Search" disabled={employeeID !== ''}>
-								<Search class="w-4 h-4" />
+							<Button
+								variant="primary"
+								on:click={() => {
+									employeeID = '';
+									searchTerm = '';
+									loadLeaveBalances();
+								}}
+								title="Reset Filters"
+								disabled={employeeID === '' && searchTerm === ''}
+							>
+								<RotateCcw class="w-4 h-4" />
+							</Button>
+
+							<Button on:click={handleExport} title="Export PDF">
+								<Printer class="w-4 h-4" />
 							</Button>
 						</div>
 					</div>
@@ -316,10 +331,6 @@
 						title="Table View"
 					>
 						<TableIcon class="w-4 h-4" />
-					</Button>
-
-					<Button on:click={handleExport} title="Export PDF">
-						<Printer class="w-4 h-4" />
 					</Button>
 				</div>
 			</div>

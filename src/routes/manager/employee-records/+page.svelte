@@ -12,7 +12,7 @@
 		BreadcrumbSeparator,
 		BreadcrumbPage
 	} from '$lib/components/ui/breadcrumb';
-	import { Plus, Pencil, Trash2, IdCardLanyard } from 'lucide-svelte';
+	import { Plus, Pencil, Trash2, IdCardLanyard, RotateCcw } from 'lucide-svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { enhance } from '$app/forms';
 	import * as Alert from '$lib/components/ui/alert';
@@ -41,6 +41,23 @@
 	let alertMessage: string | null = null;
 	let alertVariant: 'success' | 'error' | 'info' = 'info';
 	let t: NodeJS.Timeout | null = null;
+	let employeeQuery = '';
+
+	function applyFilters() {
+		// nothing extra needed, reactive statement will update
+	}
+
+	function resetFilters() {
+		employeeQuery = '';
+	}
+
+	// reactive filtered list
+	$: filteredEmployees = data.employees.filter((e) => {
+		if (!employeeQuery.trim()) return true;
+
+		const q = employeeQuery.toLowerCase();
+		return e.name?.toLowerCase().includes(q) || e.email?.toLowerCase().includes(q);
+	});
 
 	onDestroy(() => t && clearTimeout(t));
 
@@ -195,8 +212,27 @@
 			</Alert.Root>
 		{/if}
 
-		<div class="flex justify-end mb-4">
-			<Button on:click={addEmployee}><Plus class="w-4 h-4" /></Button>
+		<div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+			<!-- Left side: Search + Reset + Filter -->
+			<div class="flex items-center gap-2 flex-wrap">
+				<label class="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+					Search Employee
+					<Input
+						placeholder="Name or Email"
+						bind:value={employeeQuery}
+						class="rounded-lg border border-gray-300 bg-white p-1
+          dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100
+          focus:ring-2 focus:ring-red-500 outline-none transition"
+					/>
+				</label>
+
+				<Button variant="primary" on:click={resetFilters} title="Reset"><RotateCcw class="w-4 h-4" /></Button>
+			</div>
+
+			<!-- Right side: Add Employee -->
+			<div>
+				<Button on:click={addEmployee}>+ Add Employee</Button>
+			</div>
 		</div>
 
 		{#if showForm}
@@ -323,7 +359,7 @@
 					</Table.Row>
 				</Table.Header>
 				<Table.Body>
-					{#each data.employees as e, i}
+					{#each filteredEmployees as e, i}
 						<Table.Row>
 							<Table.Cell>{i + 1}</Table.Cell>
 							<Table.Cell>{e.name}</Table.Cell>

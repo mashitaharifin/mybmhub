@@ -13,7 +13,7 @@
 		BreadcrumbPage
 	} from '$lib/components/ui/breadcrumb';
 	import * as Alert from '$lib/components/ui/alert';
-	import { RefreshCcw, ChevronLeft, ChevronRight, Printer } from 'lucide-svelte';
+	import { RotateCcw, ChevronLeft, ChevronRight, Printer } from 'lucide-svelte';
 	import { format } from '$lib/utils/formatHelpers';
 	import { exportElementToPDF } from '$lib/utils/exportHelpers';
 
@@ -93,9 +93,24 @@
 		}
 	}
 
-	function handleRefresh() {
+	let prevSearch = searchKeyword;
+	let prevFrom = dateFrom;
+	let prevTo = dateTo;
+
+	$: {
+		if (searchKeyword !== prevSearch || dateFrom !== prevFrom || dateTo !== prevTo) {
+			prevSearch = searchKeyword;
+			prevFrom = dateFrom;
+			prevTo = dateTo;
+			loadLogs();
+		}
+	}
+
+	function resetFilters() {
+		searchKeyword = '';
+		dateFrom = '';
+		dateTo = '';
 		offset = 0;
-		loadLogs();
 	}
 
 	async function loadImageAsDataURL(url: string): Promise<string> {
@@ -360,7 +375,9 @@
 			</div>
 
 			<div class="flex gap-2">
-				<Button on:click={handleRefresh} title="Refresh"><RefreshCcw class="w-4 h-4" /></Button>
+				<Button variant="primary" on:click={resetFilters} title="Reset">
+					<RotateCcw class="w-4 h-4" />
+				</Button>
 
 				<Button on:click={() => handleExport()} title="Export PDF">
 					<Printer class="w-4 h-4" />
