@@ -12,7 +12,7 @@
 	class={cn(
 		'inline-flex items-center justify-start rounded-lg bg-gray-100 dark:bg-gray-800 p-1 text-gray-600 dark:text-gray-300 shadow-inner',
 		// Accent outline when focused
-		'focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2',
+		'focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2',
 		'transition-colors duration-200',
 		className
 	)}

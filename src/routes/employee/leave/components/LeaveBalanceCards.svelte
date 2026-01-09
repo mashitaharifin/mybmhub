@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { LeaveBalanceItem } from '$lib/types/empDashboard';
+	import GlassCard from '$lib/components/ui/GlassCard.svelte';
 
 	export let leaveBalances: LeaveBalanceItem[] = [];
 
@@ -10,9 +11,9 @@
 	}
 
 	function usageColor(remainingPercent: number): string {
-		if (remainingPercent >= 70) return 'text-green-500'; // High remaining (Good)
-		if (remainingPercent >= 40) return 'text-yellow-500'; // Medium remaining (Caution)
-		return 'text-red-500'; // Low remaining (Urgent)
+		if (remainingPercent >= 70) return 'text-pink-300 dark:text-purple-500'; // High remaining (Good)
+		if (remainingPercent >= 40) return 'text-orange-400 dark:text-amber-600'; // Medium remaining (Caution)
+		return 'text-red-400 dark:text-red-600'; // Low remaining (Urgent)
 	}
 
 	const CIRCLE_RADIUS = 40; // This controls the size of the ring
@@ -28,9 +29,7 @@
 		{@const remainPercent = percentageRemaining(leave.totalEntitlement, leave.remaining)}
 		{@const colorClass = usageColor(remainPercent)}
 
-		<div
-			class="flex flex-col bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-xl border border-gray-100 dark:border-gray-700 hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02] min-h-[180px]"
-		>
+		<GlassCard className="flex flex-col rounded-2xl min-h-[180px] shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02]">
 			<h3 class="font-semibold text-xl mb-1 text-gray-900 dark:text-gray-50">
 				{leave.leaveTypeName}
 			</h3>
@@ -71,13 +70,13 @@
 				</div>
 
 				<div class="flex flex-col items-end">
-					<span class="text-5xl font-bold text-gray-800 dark:text-white leading-none"
+					<span class="text-5xl font-bold text-gray-700 dark:text-white leading-none"
 						>{leave.remaining}</span
 					>
 					<span class="text-lg font-medium text-gray-600 dark:text-gray-300 mt-1">Days Left</span>
 				</div>
 			</div>
 
-		</div>
+		</GlassCard>
 	{/each}
 </div>

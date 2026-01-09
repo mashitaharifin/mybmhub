@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { getCalendarData } from './services/dashboardAPI';
 	import type { CalendarEvent } from '$lib/types/dashboard';
+	import GlassCard from '$lib/components/ui/GlassCard.svelte';
 
 	let currentDate = new Date();
 	let currentMonth: number;
@@ -87,10 +88,8 @@
 	}
 </script>
 
-<div
-	class="bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-800/20 rounded-2xl shadow-md p-5 flex flex-col"
->
-	<h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">Calendar</h2>
+<GlassCard>
+	<h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3 lg:mb-2">Calendar</h2>
 
 	<!-- Month Navigation -->
 	<div class="flex items-center justify-center mb-3">
@@ -181,7 +180,7 @@
 			</div>
 		</div>
 	{/if}
-</div>
+</GlassCard>
 
 <style>
 	.is-today {

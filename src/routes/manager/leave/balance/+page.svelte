@@ -15,6 +15,7 @@
 	import Button from '$lib/components/ui/button.svelte';
 	import LeaveBalanceCards from '../components/LeaveBalanceCardsManager.svelte';
 	import LeaveBalanceTable from '../components/LeaveBalanceTableManager.svelte';
+	import GlassCard from '$lib/components/ui/GlassCard.svelte';
 
 	import { exportElementToPDF } from '$lib/utils/exportHelpers';
 
@@ -346,9 +347,7 @@
 				<!-- CARDS VIEW -->
 				<div class="space-y-6">
 					{#each groupedLeave as group (group.employeeName)}
-						<div
-							class="bg-white dark:bg-gray-800 rounded-lg shadow border dark:border-gray-700 overflow-hidden"
-						>
+						<GlassCard className="rounded-xl" padding={false} hoverEffect={false}>
 							<!-- svelte-ignore a11y_click_events_have_key_events -->
 							<!-- svelte-ignore a11y_no_static_element_interactions -->
 							<div
@@ -374,16 +373,14 @@
 									<LeaveBalanceCards {group} />
 								</div>
 							{/if}
-						</div>
+						</GlassCard>
 					{/each}
 				</div>
 			{:else}
 				<!-- TABLE VIEW -->
 				<div class="space-y-4">
 					{#each groupedLeave as group (group.employeeName)}
-						<div
-							class="bg-white dark:bg-gray-800 rounded-lg shadow border dark:border-gray-700 overflow-hidden"
-						>
+						<GlassCard className="rounded-xl" padding={false} hoverEffect={false}>
 							<!-- svelte-ignore a11y_click_events_have_key_events -->
 							<!-- svelte-ignore a11y_no_static_element_interactions -->
 							<div
@@ -409,7 +406,7 @@
 									<LeaveBalanceTable {group} />
 								</div>
 							{/if}
-						</div>
+							</GlassCard>
 					{/each}
 				</div>
 			{/if}

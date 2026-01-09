@@ -12,6 +12,7 @@
 		BreadcrumbSeparator,
 		BreadcrumbPage
 	} from '$lib/components/ui/breadcrumb';
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 	import { Plus, Pencil, Trash2, IdCardLanyard, RotateCcw } from 'lucide-svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { enhance } from '$app/forms';
@@ -43,9 +44,13 @@
 	let t: NodeJS.Timeout | null = null;
 	let employeeQuery = '';
 
-	function applyFilters() {
-		// nothing extra needed, reactive statement will update
-	}
+	let showConfirm = false;
+	let pendingEmployeeId: number | null = null;
+
+	let showRestoreConfirm = false;
+	let pendingRestoreEmployeeId: number | null = null;
+
+	let activeTab: 'active' | 'archived' = 'active';
 
 	function resetFilters() {
 		employeeQuery = '';
@@ -53,6 +58,11 @@
 
 	// reactive filtered list
 	$: filteredEmployees = data.employees.filter((e) => {
+		// tab filter
+		if (activeTab === 'active' && e.isDeleted) return false;
+		if (activeTab === 'archived' && !e.isDeleted) return false;
+
+		// search filter
 		if (!employeeQuery.trim()) return true;
 
 		const q = employeeQuery.toLowerCase();
@@ -86,7 +96,7 @@
 	}
 
 	function editEmployee(id: number) {
-		const emp = data.employees.find((x) => x.id === id);
+		const emp = filteredEmployees.find((x) => x.id === id);
 		if (!emp) return;
 		isEditing = true;
 		employeeForm = {
@@ -117,18 +127,65 @@
 		return null;
 	}
 
-	async function deleteEmployee(id: number) {
-		if (!confirm('Delete this employee?')) return;
+	function requestArchiveEmployee(id: number) {
+		pendingEmployeeId = id;
+		showConfirm = true;
+	}
+
+	async function confirmArchiveEmployee() {
+		if (!pendingEmployeeId) return;
+
 		const fd = new FormData();
-		fd.append('id', String(id));
+		fd.append('id', String(pendingEmployeeId));
 
 		const res = await fetch('?/deleteEmployee', { method: 'POST', body: fd });
+
 		if (res.ok) {
 			await invalidateAll();
-			showAlert('Employee deleted successfully.', 'success');
+			showAlert('Employee archived successfully.', 'success');
 		} else {
-			showAlert('Failed to delete employee.', 'error');
+			showAlert('Failed to archive employee.', 'error');
 		}
+
+		showConfirm = false;
+		pendingEmployeeId = null;
+	}
+
+	function cancelArchiveEmployee() {
+		showConfirm = false;
+		pendingEmployeeId = null;
+	}
+
+	function requestRestoreEmployee(id: number) {
+		pendingRestoreEmployeeId = id;
+		showRestoreConfirm = true;
+	}
+
+	async function confirmRestoreEmployee() {
+		if (!pendingRestoreEmployeeId) return;
+
+		const fd = new FormData();
+		fd.append('id', String(pendingRestoreEmployeeId));
+
+		const res = await fetch('?/restoreEmployee', {
+			method: 'POST',
+			body: fd
+		});
+
+		if (res.ok) {
+			await invalidateAll();
+			showAlert('Employee restored successfully.', 'success');
+		} else {
+			showAlert('Failed to restore employee.', 'error');
+		}
+
+		showRestoreConfirm = false;
+		pendingRestoreEmployeeId = null;
+	}
+
+	function cancelRestoreEmployee() {
+		showRestoreConfirm = false;
+		pendingRestoreEmployeeId = null;
 	}
 
 	function getDepartmentIdByName(departmentName: string) {
@@ -220,13 +277,13 @@
 					<Input
 						placeholder="Name or Email"
 						bind:value={employeeQuery}
-						class="rounded-lg border border-gray-300 bg-white p-1
-          dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100
-          focus:ring-2 focus:ring-red-500 outline-none transition"
+						class="rounded-lg border border-gray-300 bg-white p-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-red-500 outline-none transition"
 					/>
 				</label>
 
-				<Button variant="primary" on:click={resetFilters} title="Reset"><RotateCcw class="w-4 h-4" /></Button>
+				<Button variant="primary" on:click={resetFilters} title="Reset"
+					><RotateCcw class="w-4 h-4" /></Button
+				>
 			</div>
 
 			<!-- Right side: Add Employee -->
@@ -343,6 +400,26 @@
 				</div>
 			</form>
 		{/if}
+		<div class="flex gap-2 mb-4">
+			<button
+				class="px-4 py-2 rounded-xl text-sm font-medium transition
+			{activeTab === 'active'
+					? 'bg-red-500 dark:bg-red-900/50 text-white'
+					: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}"
+				on:click={() => (activeTab = 'active')}
+			>
+				Active Employees
+			</button>
+			<button
+				class="px-4 py-2 rounded-lg text-sm font-medium transition
+			{activeTab === 'archived'
+					? 'bg-gray-700 text-white'
+					: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}"
+				on:click={() => (activeTab = 'archived')}
+			>
+				Archived Employees
+			</button>
+		</div>
 		<!-- Employee Records Table -->
 		<div class="overflow-x-auto">
 			<Table.Root>
@@ -369,12 +446,13 @@
 							<Table.Cell>{e.role}</Table.Cell>
 							<Table.Cell>
 								<select
-									value={e.status}
+								disabled={e.isDeleted}	
+								value={e.status}
 									on:change={async (evt) => handleStatusChange(e.id, e.status || 'Active', evt)}
 									class={`text-xs px-2 py-1 rounded-xl border ${
 										e.status === 'Active'
-											? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-white border-green-300 dark:border-green-600'
-											: 'bg-red-100 dark:bg-red-800 text-red-800 dark:text-white border-red-300 dark:border-red-600'
+											? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-100 border-green-300 dark:border-green-700'
+											: 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-100 border-red-300 dark:border-red-700'
 									}`}
 								>
 									<option value="Active">Active</option>
@@ -382,30 +460,41 @@
 								</select>
 							</Table.Cell>
 							<Table.Cell class="flex justify-end items-center space-x-2">
-								<a
-									href={`/manager/employee-records/${e.id}`}
-									class="inline-block p-1 rounded text-blue-500 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/20"
-									title="View employee details"
-								>
-									<IdCardLanyard class="w-4 h-4" />
-								</a>
-								<button
-									type="button"
-									class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-									on:click={() => editEmployee(e.id)}
-									title="Update employee details"
-								>
-									<Pencil class="w-4 h-4" />
-								</button>
-
-								<button
-									type="button"
-									class="p-1 rounded text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/20"
-									on:click={() => deleteEmployee(e.id)}
-									title="Delete employee"
-								>
-									<Trash2 class="w-4 h-4" />
-								</button>
+								{#if !e.isDeleted}
+									<!-- View, Edit, Archive -->
+									<a
+										href={`/manager/employee-records/${e.id}`}
+										class="inline-block p-1 rounded text-blue-500 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/20"
+										title="View employee details"
+									>
+										<IdCardLanyard class="w-4 h-4" />
+									</a>
+									<button
+										type="button"
+										class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+										on:click={() => editEmployee(e.id)}
+										title="Update employee details"
+									>
+										<Pencil class="w-4 h-4" />
+									</button>
+									<button
+										type="button"
+										class="p-1 rounded text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/20"
+										on:click={() => requestArchiveEmployee(e.id)}
+										title="Archive employee"
+									>
+										<Trash2 class="w-4 h-4" />
+									</button>
+								{:else}
+									<!-- Restore -->
+									<button
+										class="p-1 rounded text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20"
+										on:click={() => requestRestoreEmployee(e.id)}
+										title="Restore employee"
+									>
+										<RotateCcw class="w-4 h-4" />
+									</button>
+								{/if}
 							</Table.Cell>
 						</Table.Row>
 					{:else}
@@ -417,6 +506,24 @@
 					{/each}
 				</Table.Body>
 			</Table.Root>
+
+			{#if showConfirm}
+				<ConfirmDialog
+					title="Archive Employee"
+					message="Are you sure you want to archive this employee?"
+					on:confirm={confirmArchiveEmployee}
+					on:cancel={cancelArchiveEmployee}
+				/>
+			{/if}
+
+			{#if showRestoreConfirm}
+				<ConfirmDialog
+					title="Restore Employee"
+					message="Are you sure you want to restore this employee? The account will become active again."
+					on:confirm={confirmRestoreEmployee}
+					on:cancel={cancelRestoreEmployee}
+				/>
+			{/if}
 		</div>
 	</Card.Content>
 </Card.Root>

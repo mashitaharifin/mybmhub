@@ -57,23 +57,38 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		activity: null
 	};
 
-	// TEMPORARILY DISABLED AUDIT LOGGING FOR VIEW ACTIONS
-	//if (currentUser) {
-	//	try {
-	//		await db.insert(auditLogs).values({
-	//			userID: currentUser.id,
-	//   		employeeID: empId,
-	//			actionType: 'VIEW',
-	//			action: 'View Employee Details',
-	//			targetTable: 'employees',
-	//			targetID: empId,
-	//			details: `Manager viewed ${employee.name}'s details.`,
-	//			isUserVisible: false
-	//		});
-	//	} catch (err) {
-	//		console.error('Failed to log audit action:', err);
-	//	}
-	//}
+	// NEW: Fetch attendance data from your API
+	let attendanceData = null;
+	try {
+		// Call your existing API endpoint internally
+		const response = await fetch(`/api/attendance/${empId}`);
+		if (response.ok) {
+			attendanceData = await response.json();
+		}
+	} catch (err) {
+		console.error('Failed to fetch attendance data:', err);
+		attendanceData = {
+			summary: { totalDays: 0, present: 0, absent: 0, avgHours: 0 },
+			records: []
+		};
+	}
+
+	if (currentUser) {
+		try {
+			await db.insert(auditLogs).values({
+				userID: currentUser.id,
+				employeeID: empId,
+				actionType: 'VIEW',
+				action: 'View Employee Details',
+				targetTable: 'employees',
+				targetID: empId,
+				details: `Manager viewed ${employee.name}'s details.`,
+				isUserVisible: false
+			});
+		} catch (err) {
+			console.error('Failed to log audit action:', err);
+		}
+	}
 
 	return {
 		employee: {
@@ -81,6 +96,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			departmentId: employee.departmentId
 		},
 		departments: allDepartments,
+		attendanceData,
 		tabs
 	};
 };

@@ -1,28 +1,37 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { attendance, users, employees } from '$lib/server/db/schema';
-import { eq, and, gte, lt, sql } from 'drizzle-orm';
+import { eq, and, gte, lt, ilike } from 'drizzle-orm';
 
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET: RequestHandler = async ({ locals, url }) => {
 	try {
 		const user = locals.user;
-
 		if (!user || user.role !== 'Manager') {
 			return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
 				status: 401
 			});
 		}
 
-		const now = new Date();
-		const thirtyDaysAgo = new Date();
-		thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+		// Read query params
+		const month = Number(url.searchParams.get('month'));
+		const year = Number(url.searchParams.get('year'));
+		const search = url.searchParams.get('search')?.trim();
 
-		// Fetch auto-punched records in last 30 days
+		if (!month || !year) {
+			return new Response(JSON.stringify({ success: false, error: 'Invalid filters' }), {
+				status: 400
+			});
+		}
+
+		// Build date range for selected month
+		const startDate = new Date(year, month - 1, 1);
+		const endDate = new Date(year, month, 1);
+
+		// Query with filters applied
 		const rows = await db
 			.select({
 				attendanceId: attendance.id,
 				summaryDate: attendance.summaryDate,
-				autoPunchedOut: attendance.autoPunchedOut,
 				reason: attendance.autoPunchedOutReason,
 				userId: users.id,
 				userName: users.name,
@@ -34,8 +43,9 @@ export const GET: RequestHandler = async ({ locals }) => {
 			.where(
 				and(
 					eq(attendance.autoPunchedOut, true),
-					gte(attendance.summaryDate, thirtyDaysAgo.toISOString().split('T')[0]),
-					lt(attendance.summaryDate, now.toISOString().split('T')[0])
+					gte(attendance.summaryDate, startDate.toISOString().split('T')[0]),
+					lt(attendance.summaryDate, endDate.toISOString().split('T')[0]),
+					search ? ilike(users.name, `%${search}%`) : undefined
 				)
 			)
 			.orderBy(attendance.summaryDate);
@@ -55,7 +65,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 			}
 
 			const entry = grouped.get(r.userId);
-			entry.autoPunchCount += 1;
+			entry.autoPunchCount++;
 			entry.records.push({
 				attendanceId: r.attendanceId,
 				date: r.summaryDate,
@@ -63,18 +73,30 @@ export const GET: RequestHandler = async ({ locals }) => {
 			});
 		}
 
-		// Filter ≥ 3 occurrences
+		// Apply ≥ 3 rule AFTER grouping
 		const result = Array.from(grouped.values()).filter((e) => e.autoPunchCount >= 3);
+		let emptyReason: 'period' | 'employee' | null = null;
+
+		if (result.length === 0) {
+			if (search) {
+				emptyReason = 'employee';
+			} else {
+				emptyReason = 'period';
+			}
+		}
 
 		return new Response(
 			JSON.stringify({
 				success: true,
-				data: result
+				data: result,
+				emptyReason
 			}),
 			{ status: 200 }
 		);
 	} catch (err) {
 		console.error('Auto punch summary error:', err);
-		return new Response(JSON.stringify({ success: false, error: 'Server error' }), { status: 500 });
+		return new Response(JSON.stringify({ success: false, error: 'Server error' }), {
+			status: 500
+		});
 	}
 };

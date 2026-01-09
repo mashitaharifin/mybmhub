@@ -17,7 +17,7 @@ glance."
 	/>
 </svelte:head>
 
-<div class="min-h-screen p-8 space-y-6">
+<div class="min-h-screen p-6 lg:p-8 space-y-5 lg:space-y-5 dashboard-compact">
 	<DashboardHeader />
 
 	<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">

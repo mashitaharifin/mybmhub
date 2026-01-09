@@ -40,7 +40,7 @@ html {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #ff0000, #cc0000);
+    background: linear-gradient(180deg, #484879, #5c3636);
     border-radius: 10px;
     border: 2px solid white;
 }
@@ -50,5 +50,5 @@ html {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, #ff3333, #e60000);
+    background: linear-gradient(180deg, #353350, #5a3d3d);
 }

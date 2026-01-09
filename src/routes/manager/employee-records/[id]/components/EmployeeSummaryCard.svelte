@@ -68,11 +68,11 @@
 		<div class="flex items-center gap-4">
 			<!-- Avatar with gradient border -->
 			<div
-				class="w-18 h-18 p-1 rounded-full bg-gradient-to-br from-red-500 via-orange-400 to-pink-500
+				class="w-18 h-18 p-1 rounded-full bg-gradient-to-br from-pink-300 via-red-300 to-red-300 dark:from-[#2a0f1f] dark:via-[#3b164a] dark:to-[#7a1f3d]
                  flex items-center justify-center"
 			>
 				<div
-					class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-900 flex items-center justify-center overflow-hidden"
+					class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden"
 				>
 					{#if emp.avatarUrl}
 						<img
@@ -81,7 +81,7 @@
 							class="w-full h-full object-cover rounded-full"
 						/>
 					{:else}
-						<div class="text-xl font-bold text-red-700 dark:text-red-400">
+						<div class="text-xl font-bold text-pink-600 dark:text-purple-400">
 							{initials}
 						</div>
 					{/if}
@@ -136,8 +136,8 @@
 			<span
 				class={`px-2 py-1 rounded-full text-xs font-medium ${
 					emp.status === 'Active'
-						? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-						: 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+						? 'bg-green-100 text-green-700 dark:bg-green-300/30 dark:text-green-300'
+						: 'bg-gray-100 text-gray-600 dark:bg-gray-300/30 dark:text-gray-200'
 				}`}
 			>
 				{emp.status}

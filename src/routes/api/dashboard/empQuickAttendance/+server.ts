@@ -18,7 +18,7 @@ async function getShiftSettings() {
 		.select()
 		.from(systemSettings)
 		.where(eq(systemSettings.category, 'WorkingHours'));
-	const shiftStart = settings.find((s) => s.keyName === 'ShiftStart')?.value ?? '09:00';
+	const shiftStart = settings.find((s) => s.keyName === 'ShiftStart')?.value ?? '11:00';
 	const graceMinutes = Number(settings.find((s) => s.keyName === 'GraceMinutes')?.value ?? 10);
 	return { shiftStart, graceMinutes };
 }
@@ -30,18 +30,11 @@ function calculateAttendanceStatus(
 	shiftStart: string,
 	graceMinutes: number,
 	shiftDate: Date
-): 'present' | 'late' | 'absent' | 'incomplete' | 'complete' | 'missing-punch' {
+): 'absent' | 'incomplete' | 'complete' | 'missing-punch' {
 	if (!checkInTime && !checkOutTime) return 'absent';
 	if (!checkInTime && checkOutTime) return 'missing-punch';
 	if (checkInTime && !checkOutTime) return 'incomplete';
-
-	// both checkIn and checkOut exist
-	const [shiftHour, shiftMinute] = shiftStart.split(':').map(Number);
-	const shiftStartDate = new Date(shiftDate);
-	shiftStartDate.setHours(shiftHour, shiftMinute, 0, 0);
-
-	const diffMinutes = (checkInTime!.getTime() - shiftStartDate.getTime()) / 1000 / 60;
-	return diffMinutes <= graceMinutes ? 'present' : 'late';
+	return 'complete';
 }
 
 // --- Helper: calculate worked hours ---
@@ -376,11 +369,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		updatedData.attendanceStatus = dayStatus;
 
 		// ✅ Determine punch timeliness (only if check-in exists)
-		let punchTimeliness: 'early' | 'on-time' | 'late' | null = null;
-		if (todayAttendance.checkInTime || actionType === 'IN') {
-			const checkInTime = todayAttendance.checkInTime ?? now;
-			punchTimeliness = getPunchTimeliness(checkInTime, shiftStart, graceMinutes);
+		let punchTimeliness = null;
+
+		if (actionType === 'IN') {
+			punchTimeliness = getPunchTimeliness(now, shiftStart, graceMinutes);
 		}
+
 
 		await db.update(attendance).set(updatedData).where(eq(attendance.id, todayAttendance.id));
 

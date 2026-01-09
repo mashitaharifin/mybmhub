@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { employees, leaveApplications } from '$lib/server/db/schema';
+import { employees, leaveApplications, leaveTypes } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 
 export async function GET({ params, locals }) {
@@ -18,30 +18,21 @@ export async function GET({ params, locals }) {
 
 	const leaves =
 		(await db
-			.select()
+			.select({
+				id: leaveApplications.id,
+				leaveType: leaveTypes.typeName,
+				startDate: leaveApplications.startDate,
+				endDate: leaveApplications.endDate,
+				days: leaveApplications.duration, 
+				status: leaveApplications.status,
+				managerRemark: leaveApplications.managerRemark
+			})
 			.from(leaveApplications)
+			.leftJoin(leaveTypes, eq(leaveApplications.leaveTypeID, leaveTypes.id))
 			.where(eq(leaveApplications.userID, emp.userId))
-			.orderBy(leaveApplications.startDate)) ?? [];
-
-	if (!leaves.length)
-		return json({
-			balances: {
-				Annual: { used: 0, quota: 12 },
-				Medical: { used: 0, quota: 14 },
-				Emergency: { used: 0, quota: 5 }
-			},
-			records: []
-		});
-
-	// Compute rough balances (simplified demo)
-	const balances = {
-		Annual: { used: leaves.filter((l) => l.status === 'Approved').length, quota: 12 },
-		Medical: { used: 0, quota: 14 },
-		Emergency: { used: 0, quota: 5 }
-	};
+			.orderBy(leaveApplications.startDate));
 
 	return json({
-		balances,
 		records: leaves
 	});
 }

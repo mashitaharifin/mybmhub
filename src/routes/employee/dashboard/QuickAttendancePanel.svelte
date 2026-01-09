@@ -3,6 +3,7 @@
 	import { MapPin } from 'lucide-svelte';
 	import { toast } from '$lib/components/ui/toast/use-toast';
 	import Toast from '$lib/components/ui/toast/Toast.svelte';
+	import GlassCard from '$lib/components/ui/GlassCard.svelte';
 
 	let punchStatus: 'IN' | 'OUT' | 'NONE' = 'NONE';
 	let punchInTime: Date | null = null;
@@ -11,6 +12,7 @@
 
 	// Track if day is completed
 	let dayCompleted = false; // true when both check-in and check-out exist for today
+	let showPunchOutConfirm = false; // true if punchout is clicked
 
 	let formattedTime = '';
 	let currentDate = '';
@@ -311,6 +313,17 @@
 		);
 	};
 
+	const handlePunchClick = () => {
+		// If user is currently punched IN → require confirmation
+		if (punchStatus === 'IN') {
+			showPunchOutConfirm = true;
+			return;
+		}
+
+		// Otherwise proceed normally (Punch In)
+		handlePunch();
+	};
+
 	const getPunchButtonText = () => {
 		// Show disabled state when day completed & reason required
 		if (showReasonModal) return 'Submit Reason Required';
@@ -332,9 +345,7 @@
 </script>
 
 <!-- 🧭 UI -->
-<div
-	class="bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-800/20 rounded-2xl shadow-md p-5 flex flex-col gap-3 transition-colors"
->
+<GlassCard className="w-full">
 	<h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">Quick Attendance</h2>
 
 	<div class="flex items-center justify-between gap-4">
@@ -342,7 +353,7 @@
 			<div class="text-3xl font-bold">{formattedTime}</div>
 
 			<div class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
-				<MapPin class="w-4 h-4 text-red-500" />
+				<MapPin class="w-4 h-4 text-red-500 dark:text-purple-400" />
 				<span>{location}</span>
 				<span>•</span>
 				<span>{currentDate}</span>
@@ -355,7 +366,7 @@
 
 			<!-- 🔧 NEW: Show completion status -->
 			{#if dayCompleted}
-				<div class="text-xs text-green-600 dark:text-green-400 font-medium mt-1">
+				<div class="text-xs text-orange-600 dark:text-orange-400 font-medium mt-1">
 					✓ Day completed
 				</div>
 			{/if}
@@ -364,11 +375,11 @@
 		<!-- Punch Button -->
 		<div>
 			<button
-				on:click={handlePunch}
+				on:click={handlePunchClick}
 				disabled={isButtonDisabled()}
-				class="text-sm font-medium px-3 py-1.5 rounded-2xl border border-red-600 text-red-600 bg-white hover:bg-red-500 hover:text-white dark:bg-gray-700 dark:text-white dark:hover:bg-red-800 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-red-600 dark:disabled:hover:bg-gray-700 dark:disabled:hover:text-white"
-				class:bg-red-100={punchStatus !== 'IN' && !dayCompleted}
-				class:bg-red-200={punchStatus === 'IN' && !dayCompleted}
+				class="text-sm font-medium px-3 py-1.5 rounded-2xl border border-white dark:border-gray-500 bg-gradient-to-br
+					from-pink-300 via-red-300 to-red-300 dark:from-[#2a0f1f] dark:via-[#3b164a] dark:to-[#7a1f3d]
+					text-gray-100 dark:text-white hover:opacity-80 transition disabled:opacity-50 disabled:cursor-not-allowed"
 			>
 				{getPunchButtonText()}
 			</button>
@@ -406,5 +417,40 @@
 				</div>
 			</div>
 		{/if}
+
+		{#if showPunchOutConfirm}
+			<div class="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50 p-4">
+				<div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-sm w-full p-6">
+					<h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-3">
+						⚠️ Confirm Punch Out
+					</h3>
+
+					<p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
+						Are you sure you want to punch out? This will end your working hours for today.
+					</p>
+
+					<div class="flex justify-end gap-3">
+						<button
+							on:click={() => (showPunchOutConfirm = false)}
+							class="px-4 py-2 text-sm rounded-3xl border border-gray-300 dark:border-gray-600
+						text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+						>
+							Cancel
+						</button>
+
+						<button
+							on:click={() => {
+								showPunchOutConfirm = false;
+								handlePunch();
+							}}
+							class="px-4 py-2 text-sm bg-pink-400 dark:bg-purple-700 text-white font-semibold rounded-3xl
+						hover:bg-orange-500 hover:dark:bg-orange-700 transition"
+						>
+							Yes, Punch Out
+						</button>
+					</div>
+				</div>
+			</div>
+		{/if}
 	</div>
-</div>
+</GlassCard>

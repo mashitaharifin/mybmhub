@@ -13,6 +13,7 @@
 	import Button from '$lib/components/ui/button.svelte';
 	import { ChevronLeft, ChevronRight } from 'lucide-svelte';
 	import { onDestroy } from 'svelte';
+	import GlassCard from '$lib/components/ui/GlassCard.svelte';
 
 	export let data: PageData;
 
@@ -207,7 +208,7 @@
 			<Breadcrumb>
 				<BreadcrumbList>
 					<BreadcrumbItem>
-						<BreadcrumbLink href="/manager/dashboard">Dashboard</BreadcrumbLink>
+						<BreadcrumbLink href={data.dashboardPath}>Dashboard</BreadcrumbLink>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator />
 					<BreadcrumbItem>
@@ -244,7 +245,7 @@
 					href="/notifications?filter=all"
 					class="px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2
 				{data.filter === 'all'
-						? 'bg-red-600 text-white'
+						? 'bg-red-500 dark:bg-purple-700/40 text-white'
 						: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}"
 				>
 					All Notifications
@@ -260,7 +261,7 @@
 					href="/notifications?filter=unread"
 					class="px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2
 				{data.filter === 'unread'
-						? 'bg-red-600 text-white'
+						? 'bg-orange-500 dark:bg-orange-700/60 text-white'
 						: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}"
 				>
 					Unread
@@ -275,7 +276,7 @@
 			<!-- Right side: Action button -->
 			<button
 				on:click={markAllRead}
-				class="px-4 py-2.5 bg-gray-500/80 text-white hover:bg-red-700 transition-colors text-sm font-medium flex items-center gap-2 rounded-xl whitespace-nowrap"
+				class="px-4 py-2.5 bg-gray-500/80 text-white hover:bg-gray-700 transition-colors text-sm font-medium flex items-center gap-2 rounded-xl whitespace-nowrap"
 			>
 				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
@@ -292,7 +293,7 @@
 		<!-- Notifications List -->
 		<div class="notifications-list space-y-3">
 			{#if paginatedNotifications.length === 0}
-				<div class="text-center py-12">
+				<GlassCard className="text-center py-12" hoverEffect={false}>
 					<div class="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-600">
 						<svg class="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
@@ -311,15 +312,12 @@
 							? 'You have no unread notifications'
 							: 'You have no notifications yet'}
 					</p>
-				</div>
+				</GlassCard>
 			{:else}
 				{#each paginatedNotifications as n (n.id)}
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
-					<div
-						class="group p-4 rounded-xl border dark:border-gray-700 bg-white dark:bg-gray-800
-							   hover:bg-red-50 dark:hover:bg-red-500/20 transition-colors cursor-pointer
-							   {!n.isRead ? 'border-l-4 border-l-red-500 dark:border-l-red-700' : ''}"
+					<GlassCard className="group rounded-xl {!n.isRead ? 'border-l-4 border-l-red-500 dark:border-l-red-700' : ''}"
 						on:click={() => {
 							if (!n.isRead) {
 								markAsRead(n.id);
@@ -371,7 +369,7 @@
 								</div>
 							</div>
 						</div>
-					</div>
+					</GlassCard>
 				{/each}
 			{/if}
 		</div>
@@ -395,12 +393,3 @@
 		{/if}
 	</Card.Content>
 </Card.Root>
-
-<style>
-	/* Smooth transitions */
-	div[class*='transition-colors'] {
-		transition:
-			background-color 0.2s ease,
-			border-color 0.2s ease;
-	}
-</style>

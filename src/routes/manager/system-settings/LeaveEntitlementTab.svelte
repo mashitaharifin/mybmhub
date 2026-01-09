@@ -14,6 +14,26 @@
 	// svelte-ignore export_let_unused
 	export let employeeTypes: string[] = ['Permanent', 'Probation', 'Intern'];
 
+	// Sort entitlement rules by Leave Type name (A–Z),  Employee Type (A–Z), Years range (min → max)
+	$: sortedEntitlementRules = [...leaveEntitlementRules].sort((a, b) => {
+		// Leave Type name
+		const leaveA = leaveTypes.find((t) => t.id === a.leaveTypeID)?.typeName?.toLowerCase() ?? '';
+		const leaveB = leaveTypes.find((t) => t.id === b.leaveTypeID)?.typeName?.toLowerCase() ?? '';
+
+		const leaveCompare = leaveA.localeCompare(leaveB);
+		if (leaveCompare !== 0) return leaveCompare;
+
+		// Employee Type
+		const empCompare = a.empType.localeCompare(b.empType);
+		if (empCompare !== 0) return empCompare;
+
+		// Years range (min first, then max)
+		const minCompare = a.minYearsOfService - b.minYearsOfService;
+		if (minCompare !== 0) return minCompare;
+
+		return a.maxYearsOfService - b.maxYearsOfService;
+	});
+
 	let showForm = false;
 	let editing = false;
 	let alertMessage: string | null = null;
@@ -247,7 +267,10 @@
 
 				<div class="flex justify-end gap-2 mt-4">
 					<Button variant="secondary" type="button" on:click={cancelForm}>Cancel</Button>
-					<Button type="submit" disabled={!form.empType || !form.leaveTypeID || form.entitlementDays < 0}>
+					<Button
+						type="submit"
+						disabled={!form.empType || !form.leaveTypeID || form.entitlementDays < 0}
+					>
 						{editing ? 'Update' : 'Save'}
 					</Button>
 				</div>
@@ -270,7 +293,7 @@
 				</Table.Header>
 
 				<Table.Body>
-					{#each leaveEntitlementRules as r, i (r.id)}
+					{#each sortedEntitlementRules as r, i (r.id)}
 						<Table.Row>
 							<Table.Cell>{i + 1}</Table.Cell>
 							<Table.Cell

@@ -5,6 +5,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
 	import NotificationPopover from '$lib/components/ui/NotificationPopover.svelte';
+	import GlassCard from '$lib/components/ui/GlassCard.svelte';
 
 	export let user: any;
 	export let isCollapsed: boolean;
@@ -45,12 +46,12 @@
 	onMount(() => {
 		if (browser) {
 			document.documentElement.classList.toggle('dark', $theme === 'dark');
-			
+
 			fetchNotificationCount(); // Fetch initial notification count
-			
+
 			// Poll for updates every 30 seconds (fallback for SSE issues)
 			pollInterval = setInterval(fetchNotificationCount, 30000);
-			
+
 			// Listen for events from NotificationPopover
 			window.addEventListener('notification-update', handleNotificationEvent as EventListener);
 		}
@@ -81,17 +82,24 @@
 </script>
 
 <header
-	class={`fixed top-0 right-0 h-16 bg-white dark:bg-gray-800 border-b dark:border-gray-800 shadow-sm z-20
-    flex flex-wrap items-center justify-between transition-all duration-300 px-4 sm:px-6
+	class={`fixed top-0 right-0 h-16 z-50
+    bg-gradient-to-r 
+      from-red-100/60 via-orange-100/50 to-pink-100/60
+    dark:bg-gradient-to-r 
+      dark:from-red-900/25 dark:via-orange-900/20 dark:to-pink-900/25
+    backdrop-blur-2xl saturate-150
+    border-b border-white/40 dark:border-white/10
+    shadow-lg shadow-red-300/20 dark:shadow-black/30
+    flex items-center justify-between transition-all duration-300 px-4 sm:px-6
     ${isCollapsed ? 'w-full lg:w-[calc(100%-5rem)]' : 'w-full lg:w-[calc(100%-18rem)]'}`}
 >
-	<div class="flex items-center justify-between w-full sm:w-auto mb-2 sm:mb-0">
-		<h1 class="text-lg sm:text-xl font-semibold text-gray-800 dark:text-white truncate">
-			Hello, <span class="text-red-500 dark:text-red-600">{user?.name}</span>.
+	<div class="flex items-center">
+		<h1 class="text-sm sm:text-lg font-semibold text-gray-800 dark:text-white truncate">
+			Hello, <span class="text-orange-700 dark:text-purple-300">{user?.name}</span>.
 		</h1>
 	</div>
 
-	<div class="flex items-center space-x-4 relative">
+	<div class="flex items-center space-x-2 sm:space-x-4 relative">
 		<!-- Theme Toggle -->
 		<button
 			on:click={toggleTheme}
@@ -111,7 +119,9 @@
 			>
 				<Bell class="w-6 h-6 text-gray-500 dark:text-gray-400" />
 				{#if notificationCount > 0}
-					<span class="absolute -top-1 -right-1 text-xs bg-red-600 text-white rounded-full px-1 min-w-[1.25rem] h-5 flex items-center justify-center">
+					<span
+						class="absolute -top-1 -right-1 text-xs bg-orange-700 dark:bg-purple-400 text-white rounded-full px-1 min-w-[1.25rem] h-5 flex items-center justify-center"
+					>
 						{notificationCount > 99 ? '99+' : notificationCount}
 					</span>
 				{/if}
@@ -126,11 +136,18 @@
 				class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
 				on:click={() => (showUserMenu = !showUserMenu)}
 			>
+				<!-- Avatar with gradient ring -->
 				<div
-					class="w-10 h-10 bg-red-600 text-white flex items-center justify-center rounded-full font-semibold"
+					class="w-10 h-10 p-[2px] rounded-full bg-gradient-to-br from-pink-300 via-red-300 to-red-300 dark:from-[#2a0f1f] dark:via-[#3b164a] dark:to-[#7a1f3d]
+					flex items-center justify-center"
 				>
-					{user?.initials}
+					<div
+						class="w-full h-full rounded-full bg-white dark:bg-gray-700 text-red-600 dark:text-purple-400 font-semibold text-sm flex items-center justify-center"
+					>
+						{user?.initials}
+					</div>
 				</div>
+
 				<div class="flex flex-col items-start">
 					<span class="text-sm font-medium text-gray-900 dark:text-white">
 						{user?.name}
@@ -142,48 +159,58 @@
 				<ChevronDown class="w-4 h-4 text-gray-500 dark:text-gray-400" />
 			</div>
 
+			<!-- User Menu -->
 			{#if showUserMenu}
-				<div
-					class="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden border dark:border-gray-700 z-30"
-				>
-					<!-- User Info Section -->
-					<div class="px-4 py-3 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
-						<div class="flex items-center space-x-3">
-							<div
-								class="w-10 h-10 bg-red-600 text-white flex items-center justify-center rounded-full font-semibold"
-							>
-								{user?.initials}
-							</div>
-							<div class="flex flex-col">
-								<span class="text-sm font-medium text-gray-900 dark:text-white">
-									{user?.name}
-								</span>
-								<span class="text-xs text-gray-500 dark:text-gray-400">
-									{user?.title}
-								</span>
-								<span class="text-xs text-red-600 dark:text-red-400 font-medium">
-									{user?.role}
-								</span>
+				<div class="absolute right-0 mt-2 w-64 z-30">
+					<GlassCard
+						className="w-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-gray-200 dark:border-gray-700/50"
+						padding={false}
+						hoverEffect={false}
+					>
+						<!-- User Info Section -->
+						<div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+							<div class="flex items-center space-x-3">
+								<div
+									class="w-10 h-10 p-[2px] rounded-full bg-gradient-to-br from-pink-300 via-red-300 to-red-300 dark:from-[#2a0f1f] dark:via-[#3b164a] dark:to-[#7a1f3d]
+						flex items-center justify-center"
+								>
+									<div
+										class="w-full h-full rounded-full bg-white dark:bg-gray-700 text-red-600 dark:text-purple-400 font-semibold text-sm flex items-center justify-center"
+									>
+										{user?.initials}
+									</div>
+								</div>
+								<div class="flex flex-col">
+									<span class="text-sm font-medium text-gray-900 dark:text-white">
+										{user?.name}
+									</span>
+									<span class="text-xs text-gray-500 dark:text-gray-400">
+										{user?.title}
+									</span>
+									<span class="text-xs text-red-600 dark:text-purple-400 font-medium">
+										{user?.role}
+									</span>
+								</div>
 							</div>
 						</div>
-					</div>
 
-					<!-- Menu Items -->
-					<div class="py-1">
-						<a
-							href="/profile"
-							class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
-						>
-							Profile
-						</a>
+						<!-- Menu Items -->
+						<div class="py-1">
+							<a
+								href="/profile"
+								class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 transition-colors duration-200"
+							>
+								Profile
+							</a>
 
-						<button
-							class="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 transition-colors duration-200"
-							on:click={logout}
-						>
-							Logout
-						</button>
-					</div>
+							<button
+								class="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-purple-400 hover:bg-red-50 dark:hover:bg-gray-700/50 transition-colors duration-200"
+								on:click={logout}
+							>
+								Logout
+							</button>
+						</div>
+					</GlassCard>
 				</div>
 			{/if}
 		</div>

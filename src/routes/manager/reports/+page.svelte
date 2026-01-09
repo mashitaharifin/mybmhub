@@ -80,10 +80,10 @@
 		{/if}
 
 		<section
-			class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+			class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
 		>
 			<div
-				class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900"
+				class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-orange-50 dark:from-gray-900 dark:to-indigo-950"
 			>
 				<div class="flex items-center">
 					<h2 class="text-xl font-bold text-gray-900 dark:text-white">Attendance Report</h2>
@@ -96,10 +96,10 @@
         <br/>
 
 		<section
-			class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+			class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
 		>
 			<div
-				class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900"
+				class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-orange-50 dark:from-gray-900 dark:to-indigo-950"
 			>
 				<div class="flex items-center">
 					<h2 class="text-xl font-bold text-gray-900 dark:text-white">Leave Report</h2>

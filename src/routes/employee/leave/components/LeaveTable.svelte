@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { format } from '$lib/utils/formatHelpers';
-	import LeaveStatusBadge from './LeaveStatusBadge.svelte';
+	import LeaveStatusBadge from '$lib/components/ui/LeaveStatusBadge.svelte';
 	import * as Table from '$lib/components/ui/table';
 	import Button from '$lib/components/ui/button.svelte';
 	import { ChevronLeft, ChevronRight, CircleX, Eye } from 'lucide-svelte';

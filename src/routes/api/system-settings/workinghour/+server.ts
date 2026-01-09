@@ -43,8 +43,8 @@ export const GET: RequestHandler = async () => {
 						success: true,
 						data: {
 							title: parsedValue.title || 'Standard',
-							start: parsedValue.start || '09:00',
-							end: parsedValue.end || '17:00',
+							start: parsedValue.start || '11:00',
+							end: parsedValue.end || '19:00',
 							graceMinutes: parsedValue.graceMinutes || 10
 						},
 						source: setting.keyName // For debugging
@@ -77,8 +77,8 @@ export const GET: RequestHandler = async () => {
 					success: true,
 					data: {
 						title: parsedValue.title || 'Standard',
-						start: parsedValue.start || '09:00',
-						end: parsedValue.end || '17:00',
+						start: parsedValue.start || '11:00',
+						end: parsedValue.end || '19:00',
 						graceMinutes: parsedValue.graceMinutes || 10
 					}
 				}),

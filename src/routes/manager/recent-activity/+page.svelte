@@ -193,7 +193,7 @@
 		{
 			category: 'punch',
 			color:
-				'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800',
+				'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 border border-orange-200 dark:border-orange-800',
 			description: 'Punch In/Out'
 		},
 		{
@@ -205,7 +205,7 @@
 		{
 			category: 'leave',
 			color:
-				'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800',
+				'bg-pink-100 dark:bg-purple-900/30 text-pink-800 dark:text-purple-300 border border-pink-200 dark:border-purple-800',
 			description: 'Leave Applications & Management'
 		},
 		{

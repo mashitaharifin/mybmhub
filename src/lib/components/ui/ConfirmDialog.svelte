@@ -9,7 +9,7 @@
 
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 dark:bg-black/50">
 	<div class="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 max-w-md w-full space-y-4">
-		<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+		<h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
 		<p class="text-gray-700 dark:text-gray-300">{message}</p>
 
 		<div class="flex justify-end gap-2 mt-4">

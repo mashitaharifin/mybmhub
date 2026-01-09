@@ -1,9 +1,19 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
-	import { Calendar, ClipboardList, BarChart3 } from 'lucide-svelte';
+	import { Calendar, ChevronLeft, ChevronRight } from 'lucide-svelte';
 
 	export let data;
+
+	// Pagination
+	let offset = 0;
+	let limit = 10;
+	let totalRecords = data.records?.length ?? 0;
+
+	// Sort latest leave first (by start date)
+	$: sortedLeaves = [...(data.records ?? [])].sort(
+		(a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+	);
 </script>
 
 <div class="space-y-6">
@@ -33,8 +43,8 @@
 					</Table.Header>
 
 					<Table.Body>
-						{#if data.records?.length}
-							{#each data.records as l}
+						{#if sortedLeaves.length}
+							{#each sortedLeaves.slice(offset, offset + limit) as l}
 								<Table.Row class="hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
 									<Table.Cell>{l.leaveType}</Table.Cell>
 									<Table.Cell>
@@ -51,7 +61,9 @@
 													? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
 													: l.status === 'Pending'
 														? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
-														: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+														: l.status === 'Cancelled'
+															? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+															: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
 											}`}
 										>
 											{l.status}
@@ -71,6 +83,30 @@
 						{/if}
 					</Table.Body>
 				</Table.Root>
+
+				<div class="flex justify-between mt-4 items-center">
+					<div class="text-sm text-gray-600 dark:text-gray-100">
+						Showing {offset + 1}-{Math.min(offset + limit, totalRecords)} of {totalRecords} records
+					</div>
+
+					<div class="flex gap-2">
+						<button
+							on:click={() => (offset = Math.max(0, offset - limit))}
+							disabled={offset === 0}
+							class="p-1 rounded disabled:opacity-40"
+						>
+							<ChevronLeft class="w-4 h-4" />
+						</button>
+
+						<button
+							on:click={() => (offset = Math.min(totalRecords - limit, offset + limit))}
+							disabled={offset + limit >= totalRecords}
+							class="p-1 rounded disabled:opacity-40"
+						>
+							<ChevronRight class="w-4 h-4" />
+						</button>
+					</div>
+				</div>
 			</div>
 		</Card.Content>
 	</Card.Root>

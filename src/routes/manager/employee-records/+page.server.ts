@@ -86,7 +86,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	if (statusFilter) whereClauses.push(eq(users.status, statusFilter as any));
 
 	whereClauses.push(eq(users.role, 'Employee'));
-	whereClauses.push(eq(employees.isDeleted, false));
 
 	const allEmployees = await db
 		.select({
@@ -102,6 +101,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			address: employees.address,
 			status: users.status,
 			dateOfJoining: employees.dateOfJoining,
+			isDeleted: employees.isDeleted,
 			createdAt: employees.createdAt
 		})
 		.from(employees)
@@ -298,14 +298,14 @@ export const actions: Actions = {
 		await logAuditAction({
 			userID: locals.user.id,
 			employeeID: id,
-			actionType: 'DELETE',
-			action: 'Delete Employee',
+			actionType: 'SOFT DELETE',
+			action: 'Archive Employee',
 			targetTable: 'employees',
 			targetID: id,
-			details: `Soft deleted employee ID ${id}`
+			details: `Archived employee ID ${id}`
 		});
 
-		return { success: true, message: 'Employee deleted successfully.' };
+		return { success: true, message: 'Employee archived successfully.' };
 	},
 
 	toggleStatus: async ({ request, locals }) => {
@@ -372,7 +372,7 @@ export const actions: Actions = {
 			employeeID: employeeIdNum,
 			actionType: 'UPDATE',
 			action: action,
-			targetTable: 'employees', //should it be users or employees table?
+			targetTable: 'users', 
 			targetID: employee[0].userId,
 			details: `${action === 'Employee Reactivated' ? 'Reactivated' : 'Deactivated'} employee ${employee[0].name}`
 		});
@@ -395,5 +395,31 @@ export const actions: Actions = {
 		});
 
 		return { success: true, message: 'Export logged successfully.' };
+	},
+
+	restoreEmployee: async ({ request, locals }) => {
+		if (!locals.user || locals.user.role !== 'Manager') {
+			throw error(403, '/auth/login');
+		}
+
+		const fd = await request.formData();
+		const id = Number(fd.get('id'));
+
+		await db
+			.update(employees)
+			.set({ isDeleted: false, updatedAt: new Date() })
+			.where(eq(employees.id, id));
+
+		await logAuditAction({
+			userID: locals.user.id,
+			employeeID: id,
+			actionType: 'RESTORE',
+			action: 'Restore Employee',
+			targetTable: 'employees',
+			targetID: id,
+			details: `Restored employee ID ${id}`
+		});
+
+		return { success: true, message: 'Employee restored successfully.' };
 	}
 };

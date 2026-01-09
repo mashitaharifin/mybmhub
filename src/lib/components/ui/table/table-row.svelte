@@ -8,7 +8,7 @@
 <tr
 	class={cn(
 		'border-b border-gray-200 dark:border-gray-700 transition-colors duration-150',
-		'hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer',
+		'hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer',
 		'data-[state=selected]:bg-red-100 dark:data-[state=selected]:bg-red-900/40',
 		className
 	)}

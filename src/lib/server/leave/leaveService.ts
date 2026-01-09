@@ -123,7 +123,7 @@ export async function applyLeave(params: ApplyLeaveParams) {
 		userID: userId,
 		employeeID: employee.id,
 		actionType: 'APPLY LEAVE',
-		action: 'Employee applied for leave',
+		action: 'Employee Applied for Leave',
 		targetTable: 'leave_applications',
 		targetID: application.id,
 		details: `Applied ${totalDays} day(s) from ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`,
@@ -223,7 +223,7 @@ export async function cancelLeave(params: CancelLeaveParams) {
 		userID: userId, // who performed the action
 		employeeID: employee.id, // correct employee ID
 		actionType: 'CANCEL LEAVE',
-		action: isManager ? 'Manager cancelled leave' : 'Employee cancelled leave',
+		action: isManager ? 'Manager Cancelled Leave' : 'Employee Cancelled Leave',
 		targetTable: 'leave_applications',
 		targetID: application.id,
 		details: `Cancelled leave from ${application.startDate} to ${application.endDate} (${application.duration} day(s))`,
@@ -317,7 +317,7 @@ export async function approveLeave(params: ApproveLeaveParams) {
 		userID: managerId,
 		employeeID: employee?.id || managerId,
 		actionType: 'APPROVE LEAVE',
-		action: 'Leave approved',
+		action: 'Leave Approved',
 		targetTable: 'leave_applications',
 		targetID: application.id,
 		details: `Approved leave from ${application.startDate} to ${application.endDate} (${application.duration} day(s))`,
@@ -370,7 +370,7 @@ export async function rejectLeave(params: RejectLeaveParams) {
 		userID: managerId, // manager performing action
 		employeeID: application.userID, // must be non-null now
 		actionType: 'REJECT LEAVE',
-		action: 'Leave rejected',
+		action: 'Leave Rejected',
 		targetTable: 'leave_applications',
 		targetID: application.id,
 		details: `Rejected leave request: ${reason}`,

@@ -151,8 +151,8 @@ export const GET: RequestHandler = async ({ locals }) => {
 			});
 		}
 
-		// Sort and limit to latest 10
-		const merged = activityItems.sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1)).slice(0, 10);
+		// Sort and limit to latest 5
+		const merged = activityItems.sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1)).slice(0, 5);
 
 		return new Response(JSON.stringify({ success: true, data: merged }), {
 			status: 200,

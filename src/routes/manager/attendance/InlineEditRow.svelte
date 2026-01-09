@@ -19,7 +19,7 @@
 	let saving = false;
 
 	// Determine if this record is auto-punched
-	const isAutoPunched = r.isModified === 0;
+	const isAutoPunched = r.autoPunchedOut === true;
 
 	const reasons = [
 		'Forgot to punch-out',
@@ -68,18 +68,21 @@
 	});
 
 	function validate() {
-		// Block auto-punched records unless it's incomplete
-		if (isAutoPunched && r.status === 'Complete') {
+		// Only block auto-punched records IF you still want that rule
+		if (isAutoPunched) {
 			return 'This record was auto-punched and cannot be modified.';
 		}
 
 		if (!form.reason) return 'Please select a reason.';
+
 		if (
 			form.checkInTime &&
 			form.checkOutTime &&
 			new Date(form.checkInTime) >= new Date(form.checkOutTime)
-		)
+		) {
 			return 'Check-In must be before Check-Out.';
+		}
+
 		return null;
 	}
 
@@ -178,12 +181,7 @@
 		<div
 			class="bg-blue-100 border border-blue-400 text-blue-800 px-4 py-3 rounded-lg dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300"
 		>
-			<strong>Info:</strong>
-			{#if isAutoPunched}
-				This attendance record was auto-punched and does not require edits.
-			{:else}
-				This attendance record is already complete and cannot be modified.
-			{/if}
+			<strong>Note:</strong> You are editing a completed attendance record.
 		</div>
 	{/if}
 
@@ -195,7 +193,7 @@
 				type="datetime-local"
 				bind:value={form.checkInTime}
 				class="w-full rounded border px-2 py-1 bg-white dark:bg-gray-900"
-				disabled={r.status === 'Complete' && isAutoPunched}
+				disabled={isAutoPunched}
 			/>
 			{#if r.checkInTime}
 				<p class="text-xs text-gray-500 mt-1">
@@ -209,7 +207,7 @@
 				type="datetime-local"
 				bind:value={form.checkOutTime}
 				class="w-full rounded border px-2 py-1 bg-white dark:bg-gray-900"
-				disabled={r.status === 'Complete'}
+				disabled={isAutoPunched}
 			/>
 			{#if r.checkOutTime}
 				<p class="text-xs text-gray-500 mt-1">
@@ -254,7 +252,7 @@
 			<select
 				bind:value={form.reason}
 				class="w-full rounded border px-2 py-1 bg-white dark:bg-gray-900"
-				disabled={r.status === 'Complete' && isAutoPunched}
+				disabled={isAutoPunched}
 			>
 				<option value="">Select reason</option>
 				{#each reasons as rs}
@@ -267,8 +265,8 @@
 	<!-- Actions -->
 	<div class="flex justify-end gap-2">
 		<Button variant="secondary" type="button" on:click={cancel}>Cancel</Button>
-		<Button on:click={save} disabled={saving || r.status === 'Complete'}>
-			{saving ? 'Saving...' : r.status === 'Complete' ? 'Cannot Modify Complete Record' : 'Save'}
+		<Button on:click={save} disabled={saving || isAutoPunched}>
+			{saving ? 'Saving...' : isAutoPunched ? 'Auto-Punched (Locked)' : 'Save'}
 		</Button>
 	</div>
 </div>

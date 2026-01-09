@@ -20,7 +20,9 @@
 		UserCheck,
 		Clock,
 		CalendarDays,
-		CalendarCheck
+		CalendarCheck,
+		CheckCircle2,
+		Plane
 	} from 'lucide-svelte';
 
 	let alertMessage: string | null = null;
@@ -53,7 +55,7 @@
 	};
 	let loading = false;
 	let offset = 0;
-	let limit = 20;
+	let limit = 11;
 	let totalRecords = 0;
 
 	// --- Geofence and today's punches ---
@@ -73,6 +75,9 @@
 	let showReasonModal = false;
 	let pendingRecordId: number | null = null;
 	let reasonText = '';
+
+	// --- Punch-out confirmation ---
+	let showPunchOutConfirm = false;
 
 	// --- Clock ---
 	function updateClock() {
@@ -340,28 +345,25 @@
 		// Check for leave status FIRST (highest priority)
 		if (onLeave || s.includes('leave')) {
 			if (s.includes('half day')) {
-				return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+				return 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200';
 			}
-			return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+			return 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200';
 		}
 
 		// Check for auto-punch
 		if (autoPunchedOut) {
-			return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100';
+			return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-100';
 		}
 
 		// Regular statuses
 		switch (s) {
 			case 'present':
 			case 'complete':
-				return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-			case 'late':
-				return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500 dark:text-yellow-100';
+				return 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200';
 			case 'absent':
-			case 'incomplete':
-				return 'bg-red-200 text-red-800 dark:bg-red-600 dark:text-red-100';
+				return 'bg-red-100 text-red-800 dark:bg-red-600/50 dark:text-red-200';
 			default:
-				return 'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-100';
+				return 'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-100';
 		}
 	}
 
@@ -374,6 +376,19 @@
 
 		// If both check-in and check-out exist, show Punch In (for next day)
 		return 'IN';
+	}
+
+	function handlePunchClick() {
+		const actionType = punchButtonType();
+
+		// Require confirmation ONLY for Punch Out
+		if (actionType === 'OUT') {
+			showPunchOutConfirm = true;
+			return;
+		}
+
+		// Punch In proceeds normally
+		handlePunch('IN');
 	}
 
 	let company: {
@@ -531,11 +546,6 @@
 											No punches recorded for today.
 										</div>
 									{/if}
-
-									<div class="text-sm text-gray-400 dark:text-gray-500 mt-1">
-										Geofence: {activeGeofence?.name ?? '—'} ({activeGeofence?.latitude ?? '-'},
-										{activeGeofence?.longitude ?? '-'}, r={activeGeofence?.radiusMeters ?? '-'} m)
-									</div>
 								</div>
 							{:else}
 								<div class="ml-2 text-sm text-gray-500 dark:text-gray-400">
@@ -557,9 +567,10 @@
 							</div>
 						{:else}
 							<button
-								on:click={() => handlePunch(punchButtonType())}
+								on:click={handlePunchClick}
 								disabled={punchProcessing}
-								class="text-sm font-medium px-3 py-1.5 rounded-2xl border text-red-600 bg-white hover:bg-red-500 hover:text-white dark:bg-gray-700 dark:text-white dark:hover:bg-red-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+								class="text-sm font-medium px-3 py-1.5 rounded-2xl border border-white dark:border-gray-500 bg-gradient-to-br from-pink-300 via-red-300 to-red-300 dark:from-[#2a0f1f] dark:via-[#3b164a] dark:to-[#7a1f3d]
+								text-gray-100 dark:text-white hover:opacity-80 transition disabled:opacity-50 disabled:cursor-not-allowed"
 							>
 								{punchProcessing ? 'Processing...' : quick.checkInTime ? 'Punch Out' : 'Punch In'}
 							</button>
@@ -580,8 +591,8 @@
 				</Card.Title>
 			</Card.Header>
 			<Card.Content>
-				<div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
-					<div class="flex items-center gap-3 p-4 rounded-lg bg-blue-50 dark:bg-blue-900">
+				<div class="grid sm:grid-cols-2 lg:grid-cols-6 gap-4 mt-2">
+					<div class="flex items-center gap-3 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/50">
 						<CalendarCheck class="w-6 h-6 text-blue-600 dark:text-blue-400" />
 						<div>
 							<p class="text-sm text-gray-500 dark:text-white">Total Working Days</p>
@@ -590,7 +601,7 @@
 							</p>
 						</div>
 					</div>
-					<div class="flex items-center gap-3 p-4 rounded-lg bg-green-50 dark:bg-green-900">
+					<div class="flex items-center gap-3 p-4 rounded-lg bg-green-50 dark:bg-green-900/50">
 						<UserCheck class="w-6 h-6 text-green-600 dark:text-green-400" />
 						<div>
 							<p class="text-sm text-gray-500 dark:text-white">Present</p>
@@ -599,7 +610,7 @@
 							</p>
 						</div>
 					</div>
-					<div class="flex items-center gap-3 p-4 rounded-lg bg-red-50 dark:bg-red-900">
+					<div class="flex items-center gap-3 p-4 rounded-lg bg-red-50 dark:bg-red-900/50">
 						<UserX class="w-6 h-6 text-red-600 dark:text-red-400" />
 						<div>
 							<p class="text-sm text-gray-500 dark:text-white">Absent</p>
@@ -608,7 +619,25 @@
 							</p>
 						</div>
 					</div>
-					<div class="flex items-center gap-3 p-4 rounded-lg bg-indigo-50 dark:bg-indigo-900">
+					<div class="flex items-center gap-3 p-4 rounded-lg bg-gray-50 dark:bg-gray-800/60">
+						<CheckCircle2 class="w-6 h-6 text-gray-600 dark:text-gray-300" />
+						<div>
+							<p class="text-sm text-gray-500 dark:text-white">Auto-completed</p>
+							<p class="text-lg font-semibold text-gray-700 dark:text-gray-200">
+								{summaryData.summary.autoCompleted ?? '—'}
+							</p>
+						</div>
+					</div>
+					<div class="flex items-center gap-3 p-4 rounded-lg bg-amber-50 dark:bg-amber-900/40">
+						<Plane class="w-6 h-6 text-amber-600 dark:text-amber-400" />
+						<div>
+							<p class="text-sm text-gray-500 dark:text-white">On Leave</p>
+							<p class="text-lg font-semibold text-amber-700 dark:text-amber-300">
+								{summaryData.summary.onLeave ?? '—'}
+							</p>
+						</div>
+					</div>
+					<div class="flex items-center gap-3 p-4 rounded-lg bg-indigo-50 dark:bg-indigo-900/50">
 						<Clock class="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
 						<div>
 							<p class="text-sm text-gray-500 dark:text-white">Average Hours / Day</p>
@@ -694,8 +723,13 @@
 												{#if r.onLeave}
 													{r.status}
 												{:else if r.autoPunchedOut}
-													Auto-{r.status?.replace('Present', 'Complete') ||
-														(r.checkInTime ? 'Complete' : 'Absent')}
+													{#if r.autoPunchedOutReason}
+														Auto-Complete
+													{:else if r.autoPunchedOutReasonRequired}
+														Auto-Incomplete
+													{:else}
+														Auto-Complete
+													{/if}
 												{:else}
 													{r.status ?? (r.checkInTime ? 'Present' : 'Absent')}
 												{/if}
@@ -724,7 +758,10 @@
 													<div class="flex items-center gap-1 mb-1">
 														<div class="w-2 h-2 bg-blue-500 rounded-full"></div>
 														<span class="text-xs font-medium text-blue-700 dark:text-blue-300">
-															On Leave
+															{r.leaveType}
+															{#if r.halfDayLeave}
+																<span class="italic"> (Half Day – {r.leaveSession || 'AM'})</span>
+															{/if}
 														</span>
 													</div>
 													{#if r.halfDayLeave}
@@ -824,6 +861,39 @@
 					class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
 				>
 					Submit Reason
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+{#if showPunchOutConfirm}
+	<div class="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50 p-4">
+		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-sm w-full p-6">
+			<h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-3">⚠️ Confirm Punch Out</h3>
+
+			<p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
+				Are you sure you want to punch out? This will end your working hours for today.
+			</p>
+
+			<div class="flex justify-end gap-3">
+				<button
+					on:click={() => (showPunchOutConfirm = false)}
+					class="px-4 py-2 text-sm rounded-3xl border border-gray-300 dark:border-gray-600
+						text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+				>
+					Cancel
+				</button>
+
+				<button
+					on:click={() => {
+						showPunchOutConfirm = false;
+						handlePunch('OUT');
+					}}
+					class="px-4 py-2 text-sm bg-pink-400 dark:bg-purple-700 text-white font-semibold rounded-3xl
+						hover:bg-orange-500 hover:dark:bg-orange-700 transition"
+				>
+					Yes, Punch Out
 				</button>
 			</div>
 		</div>

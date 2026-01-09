@@ -6,7 +6,8 @@ import {
 	punch,
 	geofenceLocations,
 	employees,
-	leaveApplications
+	leaveApplications,
+	leaveTypes
 } from '$lib/server/db/schema';
 import { eq, and, gte, lte, or } from 'drizzle-orm';
 import dayjs from 'dayjs';
@@ -87,12 +88,15 @@ export async function GET({ locals }) {
 			)
 		);
 
+	const leaveTypesMap = new Map<number, string>();
+
+	const leaveTypesRows = await db.select().from(leaveTypes);
+	leaveTypesRows.forEach((lt) => {
+		leaveTypesMap.set(lt.id, lt.typeName);
+	});
+
 	// Helper function to check if a date is within leave period
-	function isOnLeave(checkDate: string): {
-		onLeave: boolean;
-		halfDay?: boolean;
-		session?: string | null;
-	} {
+	function isOnLeave(checkDate: string) {
 		const date = dayjs(checkDate);
 
 		for (const leave of approvedLeaves) {
@@ -100,14 +104,17 @@ export async function GET({ locals }) {
 			const end = dayjs(leave.endDate);
 
 			if (date.isSameOrAfter(start, 'day') && date.isSameOrBefore(end, 'day')) {
+				const leaveTypeName =
+					leave.leaveTypeID != null ? leaveTypesMap.get(leave.leaveTypeID) : null;
+
 				return {
 					onLeave: true,
 					halfDay: leave.halfDay || false,
-					session: leave.halfDaySession || null
+					session: leave.halfDaySession || null,
+					leaveType: leaveTypeName ?? 'Leave'
 				};
 			}
 		}
-
 		return { onLeave: false };
 	}
 
@@ -148,7 +155,7 @@ export async function GET({ locals }) {
 			continue;
 		}
 
-		const leaveInfo = isOnLeave(dayStr); 	// Check if on leave
+		const leaveInfo = isOnLeave(dayStr); // Check if on leave
 		const att = attendanceRows.find((a) => dayjs(a.summaryDate).format('YYYY-MM-DD') === dayStr);
 
 		let record: any = {
@@ -162,7 +169,9 @@ export async function GET({ locals }) {
 			autoPunchedOut: att?.autoPunchedOut || false,
 			autoPunchedOutReason: att?.autoPunchedOutReason || null,
 			autoPunchedOutReasonRequired: att?.autoPunchedOutReasonRequired || false,
+			remarks: att?.autoPunchedOutReason ?? null,
 			onLeave: leaveInfo.onLeave,
+			leaveType: leaveInfo.leaveType ?? null,
 			halfDayLeave: leaveInfo.halfDay,
 			leaveSession: leaveInfo.session
 		};
@@ -214,13 +223,15 @@ export async function GET({ locals }) {
 				record.status = 'On Leave';
 			}
 			totalOnLeave++;
-		}
-		else if (checkInPunch && checkOutPunch) {
+		} else if (checkInPunch && checkOutPunch) {
 			record.status = 'Present';
 			totalPresent++;
 		} else if (checkInPunch && !checkOutPunch) {
-			record.status = 'Incomplete';
-			totalPresent++;
+			if (record.autoPunchedOut && record.autoPunchedOutReason) {
+				record.status = 'Complete';
+			} else {
+				record.status = 'Incomplete';
+			}
 		} else {
 			record.status = 'Absent';
 			totalAbsent++;
@@ -243,6 +254,7 @@ export async function GET({ locals }) {
 			present: totalPresent,
 			absent: totalAbsent,
 			onLeave: totalOnLeave,
+			autoCompleted: records.filter((r) => r.autoPunchedOut).length,
 			avgHours
 		},
 		records

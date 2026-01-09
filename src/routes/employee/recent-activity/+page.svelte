@@ -18,6 +18,34 @@
 	import { exportElementToPDF } from '$lib/utils/exportHelpers';
 
 	let logs: any[] = [];
+	$: filteredLogs = (() => {
+		let result = logs;
+
+		// Keyword filter
+		const keyword = searchKeyword.trim().toLowerCase();
+		if (keyword) {
+			result = result.filter((log) => {
+				const action = log.action?.toLowerCase() ?? '';
+				const target = log.targetTable?.toLowerCase() ?? '';
+				return action.includes(keyword) || target.includes(keyword);
+			});
+		}
+
+		// Date filter
+		if (dateFrom) {
+			const from = new Date(dateFrom);
+			result = result.filter((log) => new Date(log.createdAt) >= from);
+		}
+		if (dateTo) {
+			const to = new Date(dateTo);
+			result = result.filter((log) => new Date(log.createdAt) <= to);
+		}
+
+		return result;
+	})();
+
+	// Reactive state for refresh button
+	$: isRefreshEnabled = searchKeyword.trim().length > 0;
 	let alertMessage: string | null = null;
 	let alertVariant: 'success' | 'error' | 'info' = 'info';
 	let t: NodeJS.Timeout | null = null;
@@ -74,6 +102,9 @@
 	}
 
 	function handleRefresh() {
+		searchKeyword = '';
+		dateFrom = '';
+		dateTo = '';
 		offset = 0;
 		loadLogs();
 	}
@@ -142,7 +173,7 @@
 		{
 			category: 'punch',
 			color:
-				'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800',
+				'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 border border-orange-200 dark:border-orange-800',
 			description: 'Punch In/Out'
 		},
 		{
@@ -154,7 +185,7 @@
 		{
 			category: 'leave',
 			color:
-				'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800',
+				'bg-pink-100 dark:bg-purple-900/30 text-pink-800 dark:text-purple-300 border border-pink-200 dark:border-purple-800',
 			description: 'Leave Applications'
 		},
 		{
@@ -278,7 +309,6 @@
 					placeholder="e.g., Punch In/Out, Leave Application"
 					bind:value={searchKeyword}
 					class="text-sm rounded-lg border border-gray-300 bg-white p-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-red-500 outline-none transition min-w-[140px]"
-					on:change={loadLogs}
 				/>
 			</div>
 
@@ -290,7 +320,6 @@
 					type="date"
 					bind:value={dateFrom}
 					class="text-sm rounded-lg border border-gray-300 bg-white p-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-red-500 outline-none transition min-w-[140px]"
-					on:change={loadLogs}
 				/>
 			</div>
 
@@ -302,13 +331,12 @@
 					type="date"
 					bind:value={dateTo}
 					class="text-sm rounded-lg border border-gray-300 bg-white p-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-red-500 outline-none transition min-w-[140px]"
-					on:change={loadLogs}
 				/>
 			</div>
 
 			<!-- Action Buttons -->
 			<div class="flex gap-2">
-				<Button on:click={handleRefresh} title="Refresh">
+				<Button on:click={handleRefresh} title="Refresh" disabled={!isRefreshEnabled}>
 					<RefreshCcw class="w-4 h-4" />
 				</Button>
 
@@ -319,7 +347,9 @@
 		</div>
 
 		<!-- Action Color Legend -->
-		<div class="flex flex-wrap gap-4 mb-4 items-center text-sm font-medium text-gray-700 dark:text-gray-100">
+		<div
+			class="flex flex-wrap gap-4 mb-4 items-center text-sm font-medium text-gray-700 dark:text-gray-100"
+		>
 			{#each actionColorMap as map}
 				<div class="flex items-center gap-2">
 					<span class={`w-4 h-4 rounded-full ${map.color.split(' ')[0]}`}></span>
@@ -348,9 +378,12 @@
 								Loading activities...
 							</Table.Cell>
 						</Table.Row>
-					{:else if logs.length}
-						{#each logs as log, i}
-							<Table.Row class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50" on:click={() => toggleRow(i)}>
+					{:else if filteredLogs.length}
+						{#each filteredLogs as log, i}
+							<Table.Row
+								class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
+								on:click={() => toggleRow(i)}
+							>
 								<Table.Cell>{i + 1 + offset}</Table.Cell>
 								<Table.Cell>{format.timestamp(log.createdAt)}</Table.Cell>
 
@@ -373,8 +406,11 @@
 							{#if expandedRow === i}
 								<Table.Row class="bg-gray-50 dark:bg-gray-800/30">
 									<Table.Cell colspan="5" class="text-sm font-mono p-4 whitespace-pre-wrap">
-										<div class="font-semibold mb-2 text-gray-700 dark:text-gray-300">Full Details:</div>
-										<pre class="text-xs bg-gray-100 dark:bg-gray-900 p-3 rounded-lg overflow-x-auto">
+										<div class="font-semibold mb-2 text-gray-700 dark:text-gray-300">
+											Full Details:
+										</div>
+										<pre
+											class="text-xs bg-gray-100 dark:bg-gray-900 p-3 rounded-lg overflow-x-auto">
 {JSON.stringify(log.details, null, 2)}</pre>
 									</Table.Cell>
 								</Table.Row>

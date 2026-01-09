@@ -107,22 +107,6 @@
 		loadApplications();
 	}
 
-	function handleSearch() {
-		const keyword = searchKeyword.trim().toLowerCase();
-		if (!keyword) {
-			leaveApplications = [...allApplications];
-		} else {
-			leaveApplications = allApplications.filter((app) => {
-				return (
-					app.leaveTypeName.toLowerCase().includes(keyword) ||
-					app.status.toLowerCase().includes(keyword)
-				);
-			});
-		}
-		totalRecords = leaveApplications.length;
-		offset = 0;
-	}
-
 	// Event handlers
 	function handlePageChange(newOffset: number) {
 		offset = newOffset;
@@ -227,6 +211,25 @@
 
 		loadApplications();
 	});
+
+	// Reactive state for refresh button
+	$: isRefreshEnabled = searchKeyword.trim().length > 0;
+
+	// Reactive search
+	$: {
+		const keyword = searchKeyword.trim().toLowerCase();
+		if (!keyword) {
+			leaveApplications = [...allApplications];
+		} else {
+			leaveApplications = allApplications.filter(
+				(app) =>
+					app.leaveTypeName.toLowerCase().includes(keyword) ||
+					app.status.toLowerCase().includes(keyword)
+			);
+		}
+		totalRecords = leaveApplications.length;
+		offset = 0;
+	}
 </script>
 
 <svelte:head>
@@ -286,11 +289,7 @@
 					/>
 				</div>
 
-				<Button on:click={handleSearch} title="Search">
-					<Search class="w-4 h-4" />
-				</Button>
-
-				<Button on:click={handleRefresh} title="Refresh">
+				<Button on:click={handleRefresh} title="Refresh" disabled={!isRefreshEnabled}>
 					<RefreshCcw class="w-4 h-4" />
 				</Button>
 

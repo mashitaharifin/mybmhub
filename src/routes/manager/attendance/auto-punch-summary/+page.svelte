@@ -39,9 +39,6 @@
 	// FILTER HANDLERS
 	function handleApply(e: CustomEvent) {
 		filters = { ...e.detail };
-		// Dispatch to AutoPunchTable
-		const event = new CustomEvent('applyFilters', { detail: filters });
-		document.dispatchEvent(event);
 		showAlert('Filters applied', 'success');
 	}
 
@@ -110,7 +107,7 @@
 					</BreadcrumbItem>
 					<BreadcrumbSeparator />
 					<BreadcrumbItem>
-						<BreadcrumbPage>Auto Punch-Out Summary</BreadcrumbPage>
+						<BreadcrumbPage>Auto-Punch Outs Summary</BreadcrumbPage>
 					</BreadcrumbItem>
 				</BreadcrumbList>
 			</Breadcrumb>

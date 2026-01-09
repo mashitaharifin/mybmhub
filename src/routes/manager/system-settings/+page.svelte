@@ -136,12 +136,12 @@
 	<Card.Content>
 		<Tabs.Root bind:value={activeTab} onValueChange={(v) => (activeTab = v)} class="w-full">
 			<Tabs.List
-				class="w-full flex overflow-x-auto sm:grid sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-3 pb-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
+				class="w-full flex overflow-x-auto sm:grid sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-3 pb-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
 				<Tabs.Trigger value="general">General</Tabs.Trigger>
 				<Tabs.Trigger value="departments">Departments</Tabs.Trigger>
 				<Tabs.Trigger value="geofence">Geofence</Tabs.Trigger>
 				<Tabs.Trigger value="working-hours">Working Hours</Tabs.Trigger>
-				<Tabs.Trigger value="patterns">Working Pattern</Tabs.Trigger>
+				<!-- <Tabs.Trigger value="patterns">Working Pattern</Tabs.Trigger> -->
 				<Tabs.Trigger value="leave-types">Leave Types</Tabs.Trigger>
 				<Tabs.Trigger value="leave-entitlements">Leave Entitlements</Tabs.Trigger>
 				<Tabs.Trigger value="holidays">Public Holidays</Tabs.Trigger>
@@ -165,9 +165,11 @@
 					<WorkingHourTab {workingHours} on:save={(e) => handleUpdate('workingHours', e.detail)} />
 				</Tabs.Content>
 
+				<!--
 				<Tabs.Content value="patterns">
 					<WorkingPatternTab {patterns} on:save={(e) => handleUpdate('patterns', e.detail)} />
 				</Tabs.Content>
+				-->
 
 				<Tabs.Content value="leave-types">
 					<LeaveTypeTab {leaveTypes} on:save={(e) => handleUpdate('leaveTypes', e.detail)} />

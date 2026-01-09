@@ -2,6 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { getMetrics } from './services/dashboardAPI';
 	import type { Metric, MetricsResponse } from '$lib/types/dashboard';
+	import GlassCard from '$lib/components/ui/GlassCard.svelte';
 
 	// Initialize with all metrics so cards always exist
 	let metrics: Metric[] = [
@@ -46,30 +47,35 @@
 
 	onMount(() => {
 		fetchMetricsData();
-		interval = setInterval(fetchMetricsData, 10000); // auto-refresh every 5s
+		interval = setInterval(fetchMetricsData, 10000); // auto-refresh every 10s
 	});
 
 	onDestroy(() => clearInterval(interval));
 </script>
 
-<div class="flex justify-center gap-10 overflow-x-auto">
+<div class="w-full flex flex-wrap justify-center gap-4 sm:gap-6 md:gap-10">
 	{#if loading}
-		<div class="text-sm text-gray-500 dark:text-gray-400">Loading metrics...</div>
+		<GlassCard className="w-full sm:w-[45%] md:w-[350px] text-sm text-gray-500 dark:text-gray-400">
+			Loading metrics...
+		</GlassCard>
 	{:else if error}
-		<div class="text-sm text-red-500">{error}</div>
+		<GlassCard className="w-full sm:w-[45%] md:w-[350px] text-sm text-red-500">
+			{error}
+		</GlassCard>
 	{:else}
 		{#each metrics as m}
-			<div
-				class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 transition-colors hover:bg-red-50 dark:hover:bg-red-800/20 flex justify-between items-center min-w-[350px]"
+			<GlassCard 
+				className="w-full sm:w-[45%] md:w-[350px] p-4 flex justify-between items-center hover:bg-red-50/50 dark:hover:bg-red-800/20"
 			>
 				<div>
 					<div class="text-lg font-medium text-gray-800 dark:text-gray-200">{m.title}</div>
-					<div class="text-xl text-gray-500 dark:text-gray-400 mt-1">
+					<div class="text-lg text-gray-500 dark:text-gray-400 mt-1">
 						{m.value !== null ? m.value : 'No data is available'}
 					</div>
 				</div>
+				<!-- Optional: Color bar if you want to use it -->
 				<!-- <div class={`w-4 h-20 rounded-full ${m.color}`}></div> -->
-			</div>
+			</GlassCard>
 		{/each}
 	{/if}
 </div>

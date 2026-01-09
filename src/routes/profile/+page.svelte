@@ -14,9 +14,12 @@
 	import { Camera, UserCircle2, Lock, BriefcaseBusiness } from 'lucide-svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import GlassCard from '$lib/components/ui/GlassCard.svelte';
 
 	// --- Load server data ---
-	export let data: { profile: any };
+	export let data: {
+		 dashboardPath: string | undefined; profile: any 
+};
 
 	let profileData = data.profile || {
 		name: 'Mashitah Arifin',
@@ -27,7 +30,7 @@
 		department: 'IT',
 		employmentType: 'Intern',
 		joinDate: '2025-08-04',
-		avatarUrl: ''
+		avatarUrl: '',
 	};
 
 	let activeTab = 'profile';
@@ -211,7 +214,7 @@
 			<Breadcrumb>
 				<BreadcrumbList>
 					<BreadcrumbItem>
-						<BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+						<BreadcrumbLink href={data.dashboardPath}>Dashboard</BreadcrumbLink>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator />
 					<BreadcrumbItem>
@@ -237,7 +240,7 @@
 	</Card.Header>
 </Card.Root>
 
-<div class="space-y-6 pt-1 pb-6 px-6">
+<div class="space-y-6 pt-1 pb-6 px-4 sm:px-6">
 	<!-- Main Content Card -->
 	<Card.Root class="w-full">
 		<Card.Content class="p-5">
@@ -253,27 +256,27 @@
 			{/if}
 
 			<Tabs.Root value={activeTab} onValueChange={(v) => (activeTab = v)}>
-				<Tabs.List class="mb-1 border-b pb-1 -mt-1">
-					<Tabs.Trigger value="profile" class="px-4 py-2">
+				<Tabs.List class="mb-1 border-b pb-1 -mt-1 flex overflow-x-auto whitespace-nowrap scrollbar-hide">
+					<Tabs.Trigger value="profile" class="px-4 py-2 flex items-center gap-2 shrink-0">
 						<UserCircle2 class="w-4 h-4 mr-2" />My Profile
 					</Tabs.Trigger>
-					<Tabs.Trigger value="company" class="px-4 py-2">
+					<Tabs.Trigger value="company" class="px-4 py-2 flex items-center gap-2 shrink-0">
 						<BriefcaseBusiness class="w-4 h-4 mr-2" />Company Info
 					</Tabs.Trigger>
-					<Tabs.Trigger value="password" class="px-4 py-2">
+					<Tabs.Trigger value="password" class="px-4 py-2 flex items-center gap-2 shrink-0">
 						<Lock class="w-4 h-4 mr-2" />Change Password
 					</Tabs.Trigger>
 				</Tabs.List>
 
 				<!-- 🧍 Profile Tab -->
 				<Tabs.Content value="profile" class="pt-4">
-					<div class="space-y-8">
+					<GlassCard className="space-y-8 p-4 sm:p-6" hoverEffect={false}>
 						<!-- Avatar Section -->
-						<div class="flex items-center gap-8 p-6 bg-white dark:bg-gray-800 rounded-lg">
+						<div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 p-4 sm:p-6 rounded-lg text-center sm:text-left">
 							<div class="relative w-28 h-28">
 								<!-- svelte-ignore a11y_img_redundant_alt -->
 								<div
-									class="w-32 h-32 p-1 rounded-full bg-gradient-to-br from-red-500 via-orange-400 to-pink-500 flex items-center justify-center"
+									class="w-32 h-32 p-1 rounded-full bg-gradient-to-br from-pink-300 via-red-300 to-red-300 dark:from-[#2a0f1f] dark:via-[#3b164a] dark:to-[#7a1f3d] flex items-center justify-center"
 								>
 									{#if avatarUrl}
 										<img
@@ -283,7 +286,7 @@
 										/>
 									{:else}
 										<div
-											class="w-28 h-28 rounded-full flex items-center justify-center bg-gray-200 dark:bg-gray-700 text-3xl font-semibold text-gray-600 dark:text-gray-300"
+											class="w-28 h-28 rounded-full flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-3xl font-semibold text-pink-600 dark:text-purple-400"
 										>
 											{name ? name.charAt(0).toUpperCase() : 'U'}
 										</div>
@@ -292,7 +295,7 @@
 
 								<label
 									for="avatar-upload"
-									class="absolute bottom-1 right-1 bg-red-600 text-white p-2 rounded-full cursor-pointer hover:bg-gray-400 shadow-lg transition-colors"
+									class="absolute bottom-1 right-1 bg-orange-600 text-white p-2 rounded-full cursor-pointer hover:bg-gray-400 shadow-lg transition-colors"
 									title="Change Picture"
 								>
 									<Camera class="w-4 h-4" />
@@ -306,7 +309,7 @@
 								/>
 							</div>
 
-							<div class="space-y-2">
+							<div class="space-y-2 max-w-xs">
 								<p class="font-semibold text-xl text-gray-900 dark:text-white">{name}</p>
 								<p class="text-gray-600 dark:text-gray-300 text-base">{email}</p>
 								<p class="text-sm text-gray-500 dark:text-gray-400">
@@ -316,24 +319,24 @@
 						</div>
 
 						<!-- Info Fields -->
-						<div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-2">
-							<div class="space-y-2">
+						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 p-2">
+							<div class="space-y-2 max-w-xs">
 								<!-- svelte-ignore a11y_label_has_associated_control -->
 								<label class="text-sm font-semibold text-gray-700 dark:text-gray-300"> Name </label>
 								<input
-									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
+									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
 									bind:value={name}
 									disabled={!isEditing}
 								/>
 							</div>
 
 							<!-- svelte-ignore a11y_label_has_associated_control -->
-							<div class="space-y-2">
+							<div class="space-y-2 max-w-xs">
 								<label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
 									Email
 								</label>
 								<input
-									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
+									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
 									type="email"
 									bind:value={email}
 									disabled={!isEditing}
@@ -343,25 +346,25 @@
 								{/if}
 							</div>
 
-							<div class="space-y-2">
+							<div class="space-y-2 max-w-xs">
 								<!-- svelte-ignore a11y_label_has_associated_control -->
 								<label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
 									Phone
 								</label>
 								<input
-									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
+									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
 									bind:value={phone}
 									disabled={!isEditing}
 								/>
 							</div>
 
-							<div class="space-y-2">
+							<div class="space-y-2 max-w-xs">
 								<!-- svelte-ignore a11y_label_has_associated_control -->
 								<label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
 									Address
 								</label>
 								<input
-									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
+									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
 									bind:value={address}
 									disabled={!isEditing}
 								/>
@@ -381,136 +384,140 @@
 									</Button>
 								</div>
 							{:else}
-								<div class="flex justify-end space-x-3">
+								<div class="flex flex-col sm:flex-row sm:justify-end gap-3">
 									<Button variant="secondary" on:click={() => (isEditing = false)}>Cancel</Button>
 									<Button on:click={saveProfile}>Save Changes</Button>
 								</div>
 							{/if}
 						</div>
-					</div>
+					</GlassCard>
 				</Tabs.Content>
 
 				<!-- 🏢 Company Information Tab -->
 				<Tabs.Content value="company" class="pt-4">
-					{#if profileData}
-						<div class="grid grid-cols-2 gap-6 p-6">
-							<div>
-								<p class="font-semibold text-sm text-gray-700 dark:text-gray-300">Job Title</p>
-								<p class="text-sm text-gray-500 dark:text-gray-400">
-									{profileData.jobTitle || '-'}
-								</p>
-							</div>
+					<GlassCard hoverEffect={false}>
+						{#if profileData}
+							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 p-4 sm:p-6">
+								<div>
+									<p class="font-semibold text-sm text-gray-700 dark:text-gray-300">Job Title</p>
+									<p class="text-sm text-gray-500 dark:text-gray-400">
+										{profileData.jobTitle || '-'}
+									</p>
+								</div>
 
-							<div>
-								<p class="font-semibold text-sm text-gray-700 dark:text-gray-300">Department</p>
-								<p class="text-sm text-gray-500 dark:text-gray-400">{departmentName || '-'}</p>
-							</div>
+								<div>
+									<p class="font-semibold text-sm text-gray-700 dark:text-gray-300">Department</p>
+									<p class="text-sm text-gray-500 dark:text-gray-400">{departmentName || '-'}</p>
+								</div>
 
-							<div>
-								<p class="font-semibold text-sm text-gray-700 dark:text-gray-300">
-									Employment Type
-								</p>
-								<p class="text-sm text-gray-500 dark:text-gray-400">
-									{profileData.employmentType || '-'}
-								</p>
-							</div>
+								<div>
+									<p class="font-semibold text-sm text-gray-700 dark:text-gray-300">
+										Employment Type
+									</p>
+									<p class="text-sm text-gray-500 dark:text-gray-400">
+										{profileData.employmentType || '-'}
+									</p>
+								</div>
 
-							<div>
-								<p class="font-semibold text-sm text-gray-700 dark:text-gray-300">Join Date</p>
-								<p class="text-sm text-gray-500 dark:text-gray-400">
-									{profileData.joinDate || '-'}
-								</p>
+								<div>
+									<p class="font-semibold text-sm text-gray-700 dark:text-gray-300">Join Date</p>
+									<p class="text-sm text-gray-500 dark:text-gray-400">
+										{profileData.joinDate || '-'}
+									</p>
+								</div>
 							</div>
-						</div>
-					{:else}
-						<p class="text-gray-500">Loading company information...</p>
-					{/if}
+						{:else}
+							<p class="text-gray-500">Loading company information...</p>
+						{/if}
+					</GlassCard>
 				</Tabs.Content>
 
 				<!-- 🔒 Password Tab -->
 				<Tabs.Content value="password" class="pt-4">
-					<div class="space-y-6 max-w-md mx-auto p-6">
-						<div class="space-y-4">
-							<!-- Current password -->
-							<div class="space-y-2">
-								<!-- svelte-ignore a11y_label_has_associated_control -->
-								<label class="text-sm font-semibold text-gray-700 dark:text-gray-300"
-									>Current Password</label
-								>
-								<input
-									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
-									type="password"
-									bind:value={currentPassword}
-								/>
-							</div>
+					<GlassCard hoverEffect={false}>
+						<div class="space-y-6 w-full max-w-md mx-auto p-4 sm:p-6">
+							<div class="space-y-4">
+								<!-- Current password -->
+								<div class="space-y-2 max-w-xs">
+									<!-- svelte-ignore a11y_label_has_associated_control -->
+									<label class="text-sm font-semibold text-gray-700 dark:text-gray-300"
+										>Current Password</label
+									>
+									<input
+										class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+										type="password"
+										bind:value={currentPassword}
+									/>
+								</div>
 
-							<!-- New password with strength -->
-							<div class="space-y-2">
-								<!-- svelte-ignore a11y_label_has_associated_control -->
-								<label class="text-sm font-semibold text-gray-700 dark:text-gray-300"
-									>New Password</label
-								>
-								<input
-									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
-									type="password"
-									bind:value={newPassword}
-								/>
-								{#if newPassword}
-									<div class="flex items-center justify-between mt-1">
-										<p class="text-sm text-gray-500">Strength: {passwordStrength.label}</p>
-										<div class="w-1/2 h-1 rounded-full bg-gray-300 dark:bg-gray-700">
-											<div
-												class={`h-1 rounded-full ${passwordStrength.color}`}
-												style="width: {passwordStrength.score * 33}%"
-											></div>
+								<!-- New password with strength -->
+								<div class="space-y-2 max-w-xs">
+									<!-- svelte-ignore a11y_label_has_associated_control -->
+									<label class="text-sm font-semibold text-gray-700 dark:text-gray-300"
+										>New Password</label
+									>
+									<input
+										class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-oeange-500 focus:ring-1 focus:ring-orange-500"
+										type="password"
+										bind:value={newPassword}
+									/>
+									{#if newPassword}
+										<div class="flex items-center justify-between mt-1">
+											<p class="text-sm text-gray-500">Strength: {passwordStrength.label}</p>
+											<div class="w-1/2 h-1 rounded-full bg-gray-300 dark:bg-gray-700">
+												<div
+													class={`h-1 rounded-full ${passwordStrength.color}`}
+													style="width: {passwordStrength.score * 33}%"
+												></div>
+											</div>
 										</div>
-									</div>
-								{/if}
+									{/if}
+								</div>
+
+								<!-- Confirm password -->
+								<div class="space-y-2 max-w-xs">
+									<!-- svelte-ignore a11y_label_has_associated_control -->
+									<label class="text-sm font-semibold text-gray-700 dark:text-gray-300"
+										>Confirm Password</label
+									>
+									<input
+										class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+										type="password"
+										bind:value={confirmPassword}
+									/>
+									{#if passwordMatchError}
+										<p class="text-sm text-red-500 mt-1">{passwordMatchError}</p>
+									{/if}
+								</div>
 							</div>
 
-							<!-- Confirm password -->
-							<div class="space-y-2">
-								<!-- svelte-ignore a11y_label_has_associated_control -->
-								<label class="text-sm font-semibold text-gray-700 dark:text-gray-300"
-									>Confirm Password</label
+							<!-- Buttons -->
+							<div class="flex flex-col sm:flex-row sm:justify-end gap-3">
+								<Button
+									variant="secondary"
+									on:click={() => {
+										currentPassword = '';
+										newPassword = '';
+										confirmPassword = '';
+									}}
 								>
-								<input
-									class="input w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
-									type="password"
-									bind:value={confirmPassword}
-								/>
-								{#if passwordMatchError}
-									<p class="text-sm text-red-500 mt-1">{passwordMatchError}</p>
-								{/if}
+									Cancel
+								</Button>
+
+								<Button
+									on:click={() => {
+										if (passwordMatchError || passwordStrength.score < 2) {
+											showAlert('Please fix password issues before saving.', 'error');
+											return;
+										}
+										changePassword();
+									}}
+								>
+									Save Changes
+								</Button>
 							</div>
 						</div>
-
-						<!-- Buttons -->
-						<div class="flex justify-end space-x-3 pt-4">
-							<Button
-								variant="secondary"
-								on:click={() => {
-									currentPassword = '';
-									newPassword = '';
-									confirmPassword = '';
-								}}
-							>
-								Cancel
-							</Button>
-
-							<Button
-								on:click={() => {
-									if (passwordMatchError || passwordStrength.score < 2) {
-										showAlert('Please fix password issues before saving.', 'error');
-										return;
-									}
-									changePassword();
-								}}
-							>
-								Save Changes
-							</Button>
-						</div>
-					</div>
+					</GlassCard>
 				</Tabs.Content>
 			</Tabs.Root>
 		</Card.Content>

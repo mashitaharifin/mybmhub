@@ -2,8 +2,9 @@
 	import * as Card from '$lib/components/ui/card';
 	import Button from '$lib/components/ui/button.svelte';
 	import { createEventDispatcher } from 'svelte';
-	import { onMount, onDestroy } from 'svelte';
-	import { Printer } from 'lucide-svelte';
+	import { onMount } from 'svelte';
+	import { Eye, EyeOff } from 'lucide-svelte';
+	import GlassCard from '$lib/components/ui/GlassCard.svelte';
 
 	const dispatch = createEventDispatcher();
 
@@ -16,22 +17,22 @@
 	let records: any[] = [];
 	let loading = true;
 	let expanded = new Set<number>();
+	let emptyReason: 'period' | 'employee' | null = null;
 
-	onMount(async () => {
-		await loadData();
-		
-		// Listen for filter changes
-		document.addEventListener('applyFilters', handleFilterChange);
-	});
+	onMount(loadData);
 
-	onDestroy(() => {
-		document.removeEventListener('applyFilters', handleFilterChange);
-	});
+	// 🔥 This is the key fix
+	$: loadDataWhenFiltersChange(filters);
 
-	async function handleFilterChange(event: Event) {
-		const customEvent = event as CustomEvent;
-		filters = { ...customEvent.detail };
-		await loadData();
+	let lastFilters = '';
+
+	function loadDataWhenFiltersChange(f: typeof filters) {
+		const serialized = JSON.stringify(f);
+		if (serialized !== lastFilters) {
+			lastFilters = serialized;
+			loadData();
+			emptyReason = null;
+		}
 	}
 
 	async function loadData() {
@@ -49,6 +50,7 @@
 			const json = await res.json();
 			if (!json.success) throw new Error(json.error);
 			records = json.data || [];
+			emptyReason = json.emptyReason ?? null;
 		} catch (e) {
 			console.error('Failed to load data:', e);
 			dispatch('alert', { message: 'Failed to load auto punch-out data', variant: 'error' });
@@ -79,33 +81,44 @@
 <div id="auto-punch-table">
 	<div class="mb-4 flex justify-between items-center">
 		<div class="text-sm text-gray-600 dark:text-gray-300">
-			<span class="font-medium">Total Flagged:</span> {records.length} employees
+			<span class="font-medium">Total Flagged:</span>
+			{records.length} employees
 			<span class="mx-3">|</span>
 			<span class="font-medium">Threshold:</span> ≥ 3 times
 			<span class="mx-3">|</span>
-			<span class="font-medium">Period:</span> {filters.month}/{filters.year}
+			<span class="font-medium">Period:</span>
+			{filters.month}/{filters.year}
 		</div>
-	
 	</div>
 
 	{#if loading}
 		<div class="flex justify-center items-center py-12">
 			<div class="text-center">
-				<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100 mx-auto mb-2"></div>
+				<div
+					class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100 mx-auto mb-2"
+				></div>
 				<p class="text-sm text-gray-500 dark:text-gray-400">Loading records...</p>
 			</div>
 		</div>
 	{:else if records.length === 0}
-		<Card.Root class="border border-dashed">
-			<Card.Content class="py-12 text-center">
-				<p class="text-gray-500 dark:text-gray-400">No auto punch-out records found for the selected period.</p>
-			</Card.Content>
-		</Card.Root>
+		<GlassCard className="rounded-xl">
+			<div class="py-12 text-center">
+				{#if emptyReason === 'employee'}
+					<p class="text-gray-500 dark:text-gray-400 text-sm">
+						No auto punch-out records found for this employee.
+					</p>
+				{:else}
+					<p class="text-gray-500 dark:text-gray-400 text-sm">
+						No auto punch-out records found for the selected period.
+					</p>
+				{/if}
+			</div>
+		</GlassCard>
 	{:else}
 		<div class="space-y-3">
 			{#each records as r}
-				<Card.Root class="border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
-					<Card.Content class="p-4">
+				<GlassCard className="rounded-xl">
+					<div class="p-4">
 						<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
 							<div class="flex-1 min-w-0">
 								<p class="font-medium text-gray-900 dark:text-gray-100 truncate">
@@ -127,13 +140,18 @@
 									{r.autoPunchCount || 0} auto punches
 								</span>
 
-								<Button 
-									variant="secondary" 
-									size="sm" 
+								<Button
+									variant="default"
+									size="sm"
 									on:click={() => toggle(r.employeeId)}
 									class="whitespace-nowrap"
+									title={expanded.has(r.employeeId) ? 'Hide details' : 'Show details'}
 								>
-									{expanded.has(r.employeeId) ? 'Hide' : 'View'} details
+									{#if expanded.has(r.employeeId)}
+										<EyeOff class="w-4 h-4" />
+									{:else}
+										<Eye class="w-4 h-4" />
+									{/if}
 								</Button>
 							</div>
 						</div>
@@ -147,13 +165,16 @@
 									<table class="w-full min-w-full divide-y divide-gray-200 dark:divide-gray-700">
 										<thead class="bg-gray-50 dark:bg-gray-800/50">
 											<tr>
-												<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+												<th
+													class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+												>
 													Date
 												</th>
-												<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+												<th
+													class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+												>
 													Reason
 												</th>
-												
 											</tr>
 										</thead>
 										<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -165,7 +186,6 @@
 													<td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">
 														{rec.reason || 'No reason provided'}
 													</td>
-													
 												</tr>
 											{/each}
 										</tbody>
@@ -173,8 +193,8 @@
 								</div>
 							</div>
 						{/if}
-					</Card.Content>
-				</Card.Root>
+					</div>
+				</GlassCard>
 			{/each}
 		</div>
 	{/if}

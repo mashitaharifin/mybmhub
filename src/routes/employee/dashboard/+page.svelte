@@ -20,24 +20,20 @@
 	/>
 </svelte:head>
 
-<div class="min-h-screen p-8 space-y-6">
-	<!-- Header with streak -->
+<div class="min-h-screen p-6 lg:p-8 space-y-5 lg:space-y-5 dashboard-compact">
 	<DashboardHeader />
 
-	<!-- Top Row: Profile + Quick Attendance -->
 	<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 		<QuickAttendancePanel />
 		<QuickProfileCard />
 	</div>
 
-	<!-- Middle Row: Snapshot + Calendar -->
 	<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 		<AttendanceSnapshot />
 		<DashboardCalendar />
 		<RecentActivity />
 	</div>
 
-	<!-- Bottom Row: Leave Balance + Recent Activity -->
 	<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 		<div class="lg:col-span-3">
 			<LeaveBalanceCards />

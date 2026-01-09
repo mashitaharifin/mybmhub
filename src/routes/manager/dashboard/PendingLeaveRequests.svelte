@@ -4,6 +4,7 @@
 	import type { LeaveRequest } from '$lib/types/dashboard';
 	import { ChevronRight } from 'lucide-svelte';
 	import { goto } from '$app/navigation';
+	import GlassCard from '$lib/components/ui/GlassCard.svelte';
 
 	let requests: LeaveRequest[] = [];
 	let loading = true;
@@ -16,13 +17,32 @@
 	const statusColor = (status: string) => {
 		switch (status) {
 			case 'Pending':
-				return 'bg-yellow-500 text-white dark:bg-yellow-800 dark:text-yellow-100 rounded-xl';
+				return `
+				bg-yellow-100 text-yellow-600
+				dark:bg-yellow-300/30 dark:text-yellow-200
+				rounded-xl
+			`;
+
 			case 'Approved':
-				return 'bg-green-500 text-white dark:bg-green-800 dark:text-green-100 rounded-xl';
+				return `
+				bg-green-100 text-green-600
+				dark:bg-green-300/30 dark:text-green-300
+				rounded-xl
+			`;
+
 			case 'Rejected':
-				return 'bg-red-500 text-white dark:bg-red-800 dark:text-red-100 rounded-xl';
+				return `
+				bg-red-100 text-red-600
+				dark:bg-red-300/30 dark:text-red-200
+				rounded-xl
+			`;
+
 			default:
-				return 'bg-gray-400 text-white dark:bg-gray-700 dark:text-gray-100 rounded-xl';
+				return `
+				bg-gray-100 text-gray-600
+				dark:bg-gray-300/30 dark:text-gray-200
+				rounded-xl
+			`;
 		}
 	};
 
@@ -77,16 +97,13 @@
 	onDestroy(() => clearInterval(interval));
 </script>
 
-<div
-	class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-5 transition-colors hover:bg-red-50 dark:hover:bg-red-800/20 h-full flex flex-col"
->
-<div class="flex justify-between items-center mb-4">
-	<h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">Leave Requests</h2>
-	<div class="text-xs text-gray-500 dark:text-gray-400">
-      {requests.length > 0 ? `${requests.length} showing` : 'No requests'}
-    </div>
-</div>
-	
+<GlassCard>
+	<div class="flex justify-between items-center mb-3 lg:mb-2">
+		<h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">Leave Requests</h2>
+		<div class="text-xs text-gray-500 dark:text-gray-400">
+			{requests.length > 0 ? `${requests.length} showing` : 'No requests'}
+		</div>
+	</div>
 
 	{#if loading}
 		<div class="text-sm text-gray-500 dark:text-gray-400">Loading...</div>
@@ -95,10 +112,10 @@
 	{:else if requests.length === 0}
 		<div class="text-sm text-gray-500 dark:text-gray-400">No pending leave requests.</div>
 	{:else}
-		<ul class="space-y-2 max-h-72 overflow-y-auto">
+		<ul class="space-y-2 max-h-72 lg:max-h-64 overflow-y-auto">
 			{#each requests as r}
 				<li
-					class="flex justify-between items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+					class="flex justify-between items-center p-2 rounded-lg hover:bg-gray-300/20 dark:hover:bg-gray-800/30 transition"
 				>
 					<div>
 						<div class="font-medium text-gray-800 dark:text-gray-200">{getDisplayName(r)}</div>
@@ -138,4 +155,4 @@
 			</button>
 		</div>
 	{/if}
-</div>
+</GlassCard>

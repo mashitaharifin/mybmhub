@@ -13,9 +13,9 @@
   }
 
   function usageColorClass(remainingPercent: number) {
-    if (remainingPercent >= 70) return 'text-green-500 dark:text-green-400';
-    if (remainingPercent >= 40) return 'text-yellow-500 dark:text-yellow-400';
-    return 'text-red-500 dark:text-red-400';
+    if (remainingPercent >= 70) return 'text-pink-300 dark:text-purple-500';
+    if (remainingPercent >= 40) return 'text-orange-400 dark:text-amber-600';
+    return 'text-red-400 dark:text-red-600';
   }
 
   function getProgressOffset(remainingPercent: number) {

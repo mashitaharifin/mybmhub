@@ -60,6 +60,7 @@
 		"jspdf-autotable": "^5.0.2",
 		"leaflet": "^1.9.4",
 		"lucide-svelte": "^0.546.0",
+		"maplibre-gl": "^5.15.0",
 		"node-cron": "^4.2.1",
 		"nodemailer": "^7.0.9",
 		"postgres": "^3.4.7",

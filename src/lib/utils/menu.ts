@@ -21,7 +21,7 @@ export const MANAGER_MENU = [
 		path: '/manager/leave/balance',
 		submenu: [
 			{ name: 'Employee Leave Management', path: '/manager/leave/manage' },
-			{ name: 'Employee Leave Balance', path: '/manager/leave/balance' },
+			{ name: 'Employee Leave Balance', path: '/manager/leave/balance' }
 		]
 	},
 	{
@@ -29,11 +29,16 @@ export const MANAGER_MENU = [
 		icon: CalendarCheck,
 		path: '/manager/attendance',
 		submenu: [
-			{ name: 'Attendance History', path: '/manager/attendance/' },
-			{ name: 'Auto-Punch Outs Summary', path: '/manager/attendance/auto-punch-summary' },
+			{ name: 'Attendance History', path: '/manager/attendance' },
+			{ name: 'Auto-Punch Outs Summary', path: '/manager/attendance/auto-punch-summary' }
 		]
 	},
-	{ name: 'Employee Records', icon: Users, path: '/manager/employee-records' },
+	{
+		name: 'Employee Records',
+		icon: Users,
+		path: '/manager/employee-records',
+		pattern: /^\/manager\/employee-records(\/|$)/
+	},
 	{ name: 'Reports', icon: BarChart, path: '/manager/reports' },
 	{ name: 'Notifications Centre', icon: Bell, path: '/notifications' },
 	{ name: 'System Settings', icon: Settings, path: '/manager/system-settings' },

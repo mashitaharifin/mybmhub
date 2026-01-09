@@ -2,6 +2,7 @@
   import { ChevronLeft, ChevronRight } from 'lucide-svelte';
   import { onMount } from 'svelte';
   import type { CalendarEvent } from '$lib/types/dashboard';
+  import GlassCard from '$lib/components/ui/GlassCard.svelte'; 
 
   let currentDate = new Date();
   let currentMonth: number;
@@ -20,19 +21,19 @@
   });
 
   async function loadCalendarEvents() {
-	try {
-		const res = await fetch('/api/dashboard/calendar');
-		if (!res.ok) throw new Error('Failed to fetch');
-		allEvents = await res.json(); // already returns { date, type, title }
-	} catch (err) {
-		console.error(err);
-		error = 'Unable to fetch calendar events';
-	} finally {
-		loading = false;
-	}
-}
+    try {
+      const res = await fetch('/api/dashboard/calendar');
+      if (!res.ok) throw new Error('Failed to fetch');
+      allEvents = await res.json(); 
+    } catch (err) {
+      console.error(err);
+      error = 'Unable to fetch calendar events';
+    } finally {
+      loading = false;
+    }
+  }
 
-onMount(loadCalendarEvents);
+  onMount(loadCalendarEvents);
 
   function updateCalendar() {
     currentMonth = currentDate.getMonth();
@@ -79,18 +80,18 @@ onMount(loadCalendarEvents);
   }
 </script>
 
-<div class="bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-800/20 rounded-2xl shadow-md p-5 flex flex-col">
-  <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">Calendar</h2>
+<GlassCard className="w-full" hoverEffect={true}>
+  <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3 lg:mb-2">Calendar</h2>
 
   <!-- Month Navigation -->
   <div class="flex items-center justify-center mb-3">
-    <button on:click={prevMonth} class="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+    <button on:click={prevMonth} class="p-1 rounded-full hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition">
       <ChevronLeft class="w-4 h-4 text-gray-700 dark:text-gray-200" />
     </button>
     <span class="mx-3 font-medium text-sm text-gray-800 dark:text-gray-200">
       {new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(currentDate)}
     </span>
-    <button on:click={nextMonth} class="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+    <button on:click={nextMonth} class="p-1 rounded-full hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition">
       <ChevronRight class="w-4 h-4 text-gray-700 dark:text-gray-200" />
     </button>
   </div>
@@ -118,7 +119,7 @@ onMount(loadCalendarEvents);
 
       {#each daysInMonth as day}
         <div
-          class="relative w-8 h-8 flex items-center justify-center rounded-full cursor-pointer transition hover:bg-gray-200 dark:hover:bg-gray-800 mx-auto"
+          class="relative w-8 h-8 flex items-center justify-center rounded-full cursor-pointer transition hover:bg-gray-200/50 dark:hover:bg-gray-800/50 mx-auto"
           class:is-today={isToday(day)}
           title={getTooltipText(day)}
         >
@@ -154,7 +155,7 @@ onMount(loadCalendarEvents);
       </div>
     </div>
   {/if}
-</div>
+</GlassCard>
 
 <style>
   .is-today {

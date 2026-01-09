@@ -4,6 +4,7 @@
 	import { IdCardLanyard } from 'lucide-svelte';
 	import { getEmployeeProfile } from './services/dashboardAPI';
 	import type { EmployeeProfile } from '$lib/types/empDashboard';
+	import GlassCard from '$lib/components/ui/GlassCard.svelte';
 
 	const dispatch = createEventDispatcher();
 
@@ -38,22 +39,15 @@
 	});
 </script>
 
-<div
-	class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-5 transition-colors duration-200 hover:bg-red-50 dark:hover:bg-red-800/20"
->
+<GlassCard className="w-full">
 	<!-- Title -->
-	<h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">Profile Card</h2>
+	<h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3 lg:mb-2">Profile Card</h2>
 
 	<!-- Card Content -->
 	<div class="flex items-center gap-6">
 		<!-- Avatar with gradient border -->
-		<div
-			class="w-18 h-18 p-1 rounded-full bg-gradient-to-br from-red-500 via-orange-400 to-pink-500
-         flex items-center justify-center"
-		>
-			<div
-				class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-900 text-red-600 dark:text-red-700 flex items-center justify-center"
-			>
+		<div class="w-18 h-18 p-1 rounded-full bg-gradient-to-br from-pink-300 via-red-300 to-red-300 dark:from-[#2a0f1f] dark:via-[#3b164a] dark:to-[#7a1f3d] flex items-center justify-center">
+			<div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 text-red-600 dark:text-purple-400 flex items-center justify-center">
 				{#if loading}
 					<span>...</span>
 				{:else if employee.avatarUrl}
@@ -79,8 +73,8 @@
 				<div class="text-red-500 text-sm">{error}</div>
 			{:else}
 				<div class="font-semibold text-lg">{employee.name}</div>
-				<div class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{employee.role}</div>
-				<div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{employee.jobTitle}</div>
+				<div class="text-sm text-gray-500 dark:text-gray-200 mt-0.5">{employee.role}</div>
+				<div class="text-xs text-gray-400 dark:text-gray-300 mt-0.5">{employee.jobTitle}</div>
 			{/if}
 		</div>
 
@@ -89,10 +83,10 @@
 			<a
 				href="/profile/"
 				title="View Profile Details"
-				class="text-red-600 hover:text-red-500 transition-colors"
+				class="text-red-600 dark:text-gray-400 hover:text-red-500 hover:dark:text-purple-600 transition-colors"
 			>
 				<IdCardLanyard size="28" />
 			</a>
 		</div>
 	</div>
-</div>
+</GlassCard>

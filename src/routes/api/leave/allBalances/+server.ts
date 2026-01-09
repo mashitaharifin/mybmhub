@@ -1,20 +1,20 @@
 import { json } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { leaveBalances, users, leaveTypes } from '$lib/server/db/schema';
+import { leaveBalances, users, leaveTypes, employees } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 
 export const GET = async ({ url }) => {
 	try {
 		const employeeID = url.searchParams.get('employeeID');
 
-		// Base conditions: ALWAYS restrict to Employees only
-		let whereConditions = [eq(users.role, 'Employee')];
+		// Base conditions
+		const whereConditions: any[] = [eq(users.role, 'Employee')];
 
-		// If filtering by employee
 		if (employeeID) {
 			whereConditions.push(eq(users.id, Number(employeeID)));
 		}
 
+		// Join employees table to access isDeleted
 		const data = await db
 			.select({
 				employeeID: users.id,
@@ -27,8 +27,9 @@ export const GET = async ({ url }) => {
 			})
 			.from(leaveBalances)
 			.leftJoin(users, eq(leaveBalances.userID, users.id))
+			.leftJoin(employees, eq(employees.userId, users.id)) // ✅ join employees table
 			.leftJoin(leaveTypes, eq(leaveBalances.leaveTypeID, leaveTypes.id))
-			.where(and(...whereConditions));
+			.where(and(...whereConditions, eq(employees.isDeleted, false))); // ✅ filter not-deleted
 
 		return json({ success: true, data });
 	} catch (err) {
@@ -36,4 +37,3 @@ export const GET = async ({ url }) => {
 		return json({ success: false, error: 'Failed to fetch leave balances' }, { status: 500 });
 	}
 };
-// THIS IS SEPARATE API THAT FETCH ALL EMPLOYEEs LEAVE BALANCE) //

@@ -12,9 +12,9 @@
   }
 
   function usageColorClass(remainingPercent: number) {
-    if (remainingPercent >= 70) return 'bg-green-500';
-    if (remainingPercent >= 40) return 'bg-yellow-500';
-    return 'bg-red-500';
+    if (remainingPercent >= 70) return 'bg-pink-300 dark:bg-purple-500';
+    if (remainingPercent >= 40) return 'bg-orange-400 dark:bg-amber-600';
+    return 'bg-red-400 dark:bg-red-600';
   }
 
   function toOneDecimal(v: any) {

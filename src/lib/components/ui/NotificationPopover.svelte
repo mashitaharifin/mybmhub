@@ -3,11 +3,13 @@
 	import { fly, scale } from 'svelte/transition';
 	import { goto } from '$app/navigation';
 	import NotificationItem from './NotificationItem.svelte';
+	import GlassCard from './GlassCard.svelte';
 
 	let open = false;
 	let notifications: any[] = [];
 	let loading = false;
 	let eventSource: EventSource | null = null;
+	let isMobile = false;
 
 	const limit = 6;
 
@@ -23,13 +25,27 @@
 		);
 	}
 
+	// Check if mobile
+	function checkIfMobile() {
+		isMobile = window.innerWidth < 768;
+	}
+
+	// Update body class when popover opens/closes
+	function updateBodyClass() {
+		if (typeof document !== 'undefined') {
+			if (open && isMobile) {
+				document.body.classList.add('notification-popover-open');
+			} else {
+				document.body.classList.remove('notification-popover-open');
+			}
+		}
+	}
+
 	// SSE connection for real-time notifications
 	function connectSSE() {
-		// Only connect if we have a user and not already connected
 		if (eventSource || !window.EventSource) return;
 
 		try {
-			// Use your SSE endpoint - make sure this matches your API route
 			eventSource = new EventSource('/notifications/stream');
 
 			eventSource.onopen = () => {
@@ -38,40 +54,31 @@
 
 			eventSource.onmessage = (event) => {
 				try {
-					// Check if it's a ping (just a colon)
 					if (event.data === ': ping') {
 						return;
 					}
 
 					const data = JSON.parse(event.data);
 
-					// Check if this is a ping or connection message
 					if (data.type === 'connected' || data.type === 'ping') {
 						console.log('SSE system message:', data.message || data.type);
-						return; // Ignore system messages
+						return;
 					}
 
-					// It's a real notification
 					if (data && data.id) {
 						console.log('📬 New notification via SSE:', data);
-						// Add new notification to the beginning of the list
 						const newNotification = {
 							...data,
-							isRead: false, // New notifications are unread by default
+							isRead: false,
 							createdAt: data.createdAt || new Date().toISOString()
 						};
 
-						// Prepend to notifications list, keeping limit
 						notifications = [newNotification, ...notifications].slice(0, limit);
-
-						// Optional: Play a sound or show a subtle notification
 						playNotificationSound();
 
-						// If popover is open, show a subtle indicator
 						if (open) {
 							showNewNotificationIndicator();
 						}
-						// Dispatch event for Topbar counter
 						dispatchNotificationEvent('new-notification', { id: data.id });
 					}
 				} catch (err) {
@@ -82,14 +89,12 @@
 			eventSource.onerror = (error) => {
 				console.error('❌ SSE connection error. ReadyState:', eventSource?.readyState, error);
 
-				// Check readyState to determine error type
 				if (eventSource?.readyState === EventSource.CLOSED) {
 					console.log('SSE connection closed by server');
 				}
 
 				disconnectSSE();
 
-				// Attempt to reconnect after 5 seconds
 				setTimeout(() => {
 					if (!eventSource) {
 						console.log('🔄 Attempting SSE reconnection...');
@@ -98,7 +103,6 @@
 				}, 5000);
 			};
 
-			// Also listen for custom events if your broadcaster uses them
 			eventSource.addEventListener('notification', (event) => {
 				console.log('Received notification event:', event);
 			});
@@ -115,22 +119,15 @@
 	}
 
 	function playNotificationSound() {
-		// Optional: Play a subtle notification sound
-		// You can use the Web Audio API or just a simple beep
 		try {
-			const audio = new Audio('/notifications.mp3'); // Add this sound file to your static folder
+			const audio = new Audio('/notifications.mp3');
 			audio.volume = 0.3;
-			audio.play().catch(() => {
-				// Silent fail if audio can't play
-			});
-		} catch (error) {
-			// Ignore audio errors
-		}
+			audio.play().catch(() => {});
+		} catch (error) {}
 	}
 
 	function showNewNotificationIndicator() {
-		// Optional: Add a subtle visual indicator
-		const popover = document.querySelector('.popover');
+		const popover = document.querySelector('.notification-popover');
 		if (popover) {
 			popover.classList.add('new-notification');
 			setTimeout(() => {
@@ -139,7 +136,6 @@
 		}
 	}
 
-	// Fetch notifications from API
 	async function fetchNotifications() {
 		loading = true;
 		try {
@@ -155,19 +151,17 @@
 		}
 	}
 
-	// Toggle popover
 	function toggle() {
 		open = !open;
 		if (open) {
 			fetchNotifications();
-			// Ensure SSE is connected when popover opens
 			if (!eventSource) {
 				connectSSE();
 			}
 		}
+		updateBodyClass();
 	}
 
-	// Mark all as read
 	async function markAllRead() {
 		try {
 			const res = await fetch('/notifications/mark-all-read', {
@@ -175,16 +169,14 @@
 			});
 			const data = await res.json();
 			if (data.success) {
-				// Update local notifications
 				notifications = notifications.map((n) => ({ ...n, isRead: true }));
-				dispatchNotificationEvent('mark-all-read'); // Dispatch event for Topbar counter
+				dispatchNotificationEvent('mark-all-read');
 			}
 		} catch (err) {
 			console.error('Failed to mark all read', err);
 		}
 	}
 
-	// Navigate to specific notification link and mark as read
 	async function handleNotificationClick(notification: {
 		isRead: boolean;
 		id: number;
@@ -194,9 +186,11 @@
 			if (!notification.isRead) {
 				await fetch(`/notifications/${notification.id}/read`, { method: 'PATCH' });
 				notification.isRead = true;
-				dispatchNotificationEvent('mark-read', { id: notification.id }); // Dispatch event for Topbar counter
+				dispatchNotificationEvent('mark-read', { id: notification.id });
 			}
 			if (notification.link) {
+				open = false; // Close popover before navigating
+				updateBodyClass();
 				goto(notification.link);
 			}
 		} catch (err) {
@@ -204,11 +198,11 @@
 		}
 	}
 
-	// Close when clicking outside
 	function handleOutsideClick(event: MouseEvent) {
 		const path = event.composedPath();
 		if (!path.includes(container)) {
 			open = false;
+			updateBodyClass();
 		}
 	}
 
@@ -216,8 +210,9 @@
 
 	onMount(() => {
 		document.addEventListener('click', handleOutsideClick);
+		window.addEventListener('resize', checkIfMobile);
+		checkIfMobile(); // Initial check
 
-		// Connect to SSE when component mounts
 		if (typeof window !== 'undefined' && window.EventSource) {
 			connectSSE();
 		} else {
@@ -226,168 +221,210 @@
 
 		return () => {
 			document.removeEventListener('click', handleOutsideClick);
+			window.removeEventListener('resize', checkIfMobile);
 			disconnectSSE();
+			// Clean up body class
+			if (typeof document !== 'undefined') {
+				document.body.classList.remove('notification-popover-open');
+			}
 		};
 	});
 
 	onDestroy(() => {
 		disconnectSSE();
+		window.removeEventListener('resize', checkIfMobile);
+		if (typeof document !== 'undefined') {
+			document.body.classList.remove('notification-popover-open');
+		}
 	});
 </script>
 
 <div bind:this={container} class="relative">
+	<!-- Trigger -->
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div on:click={toggle}>
+	<div on:click={toggle} class="relative">
 		<slot name="trigger"></slot>
 	</div>
 
+	<!-- Backdrop for mobile -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	{#if open && isMobile}
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<!-- svelte-ignore element_invalid_self_closing_tag -->
+		<div
+			class="fixed inset-0 bg-black/30 dark:bg-black/50 z-[100]"
+			on:click={() => {
+				open = false;
+				updateBodyClass();
+			}}
+		/>
+	{/if}
+
+	<!-- Notification Popover -->
 	{#if open}
 		<div
-			class="popover"
-			in:scale={{ duration: 150 }}
+			in:scale={{ duration: 150, start: 0.9 }}
 			out:fly={{ y: -10, duration: 150 }}
-			style="position: absolute; right: 0; top: 2.5rem;"
+			class="fixed md:absolute z-[101] 
+			       inset-x-0 md:inset-x-auto
+			       top-16 md:top-full md:mt-2
+			       md:right-0
+			       flex justify-center md:justify-start
+			       px-4 md:px-0"
 		>
-			<div class="header">
-				<div class="flex items-center gap-2">
-					<h3 class="text-gray-900 dark:text-white">Notifications</h3>
-					{#if eventSource && eventSource.readyState === EventSource.OPEN}
-						<span
-							class="w-2 h-2 bg-green-500 rounded-full animate-pulse"
-							title="Live updates connected"
-						></span>
+			<GlassCard
+				className="notification-popover w-full md:w-[360px] p-0 overflow-hidden 
+				          bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl
+				          border border-gray-200 dark:border-gray-700/50
+				          shadow-xl dark:shadow-gray-900/30
+				          max-h-[80vh] md:max-h-[500px]
+				          md:min-w-[360px]"
+				hoverEffect={false}
+				padding={false}
+			>
+				<!-- Header -->
+				<div
+					class="sticky top-0 z-10 flex items-center justify-between px-4 py-3 
+					       bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm
+					       border-b border-gray-200 dark:border-gray-700"
+				>
+					<div class="flex items-center gap-2">
+						<h3 class="font-semibold text-gray-900 dark:text-white">Notifications</h3>
+
+						{#if eventSource && eventSource.readyState === EventSource.OPEN}
+							<!-- svelte-ignore element_invalid_self_closing_tag -->
+							<span
+								class="w-2 h-2 bg-pink-500 rounded-full animate-pulse"
+								title="Live updates connected"
+							/>
+						{/if}
+					</div>
+
+					<button
+						class="text-sm text-pink-600 dark:text-purple-400 hover:text-pink-400 dark:hover:text-purple-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+						on:click={markAllRead}
+						disabled={notifications.length === 0 || notifications.every((n) => n.isRead)}
+					>
+						Mark all read
+					</button>
+				</div>
+
+				<!-- List -->
+				<div class="overflow-y-auto flex-1 custom-scrollbar">
+					{#if loading}
+						<div class="space-y-2 p-4">
+							{#each Array(4) as _, i (i)}
+								<div class="flex items-center space-x-3 animate-pulse">
+									<!-- svelte-ignore element_invalid_self_closing_tag -->
+									<div class="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full" />
+									<div class="flex-1 space-y-2">
+										<!-- svelte-ignore element_invalid_self_closing_tag -->
+										<div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
+										<!-- svelte-ignore element_invalid_self_closing_tag -->
+										<div class="h-2 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+									</div>
+								</div>
+							{/each}
+						</div>
+					{:else if notifications.length === 0}
+						<div class="flex flex-col items-center justify-center py-10 px-4 text-center">
+							<div class="w-16 h-16 mb-4 text-gray-300 dark:text-gray-600">
+								<!-- Bell icon -->
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="w-full h-full"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="1.5"
+										d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+									/>
+								</svg>
+							</div>
+							<p class="text-gray-500 dark:text-gray-400 font-medium">No notifications</p>
+							<p class="text-sm text-gray-400 dark:text-gray-500 mt-1">
+								You're all caught up!
+							</p>
+						</div>
+					{:else}
+						<div class="divide-y divide-gray-100 dark:divide-gray-800">
+							{#each notifications as notification (notification.id)}
+								<NotificationItem
+									{notification}
+									on:click={() => handleNotificationClick(notification)}
+								/>
+							{/each}
+						</div>
 					{/if}
 				</div>
-				<button
-					class="text-sm text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors"
-					on:click={markAllRead}
-				>
-					Mark all read
-				</button>
-			</div>
 
-			<div class="list">
-				{#if loading}
-					{#each Array(4) as _, i (i)}
-						<div class="skeleton"></div>
-					{/each}
-				{:else if notifications.length === 0}
-					<div class="p-4 text-center text-gray-500 dark:text-gray-400">No notifications</div>
-				{:else}
-					{#each notifications as notification (notification.id)}
-						<NotificationItem
-							{notification}
-							on:click={() => handleNotificationClick(notification)}
-						/>
-					{/each}
+				<!-- Footer -->
+				<!-- svelte-ignore a11y_click_events_have_key_events -->
+				{#if notifications.length > 0}
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div
+						class="sticky bottom-0 px-4 py-3 text-center text-sm font-medium cursor-pointer
+						       text-pink-600 dark:text-purple-400
+						       hover:bg-gray-50 dark:hover:bg-gray-800/50
+						       transition-colors border-t border-gray-200 dark:border-gray-700
+						       bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm"
+						on:click={() => {
+							open = false;
+							updateBodyClass();
+							goto('/notifications');
+						}}
+					>
+						View All Notifications
+					</div>
 				{/if}
-			</div>
-
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div
-				class="footer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-				on:click={() => goto('/notifications')}
-			>
-				View All
-			</div>
+			</GlassCard>
 		</div>
 	{/if}
 </div>
 
 <style>
-	.popover {
-		min-width: 300px;
-		max-width: 360px;
-		background: white;
-		border-radius: 1rem;
-		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-		overflow: hidden;
-		z-index: 50;
-		transition: all 0.3s ease;
+	/* Custom scrollbar for notifications */
+	.custom-scrollbar {
+		scrollbar-width: thin;
+		scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
 	}
 
-	:global(.dark) .popover {
-		background: #1f2937; /* gray-800 */
-		color: white;
-		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+	.custom-scrollbar::-webkit-scrollbar {
+		width: 6px;
 	}
 
-	.header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 0.75rem 1rem;
-		border-bottom: 1px solid #e5e7eb; /* gray-200 */
+	.custom-scrollbar::-webkit-scrollbar-track {
+		background: transparent;
 	}
 
-	:global(.dark) .header {
-		border-color: #374151; /* gray-700 */
+	.custom-scrollbar::-webkit-scrollbar-thumb {
+		background-color: rgba(156, 163, 175, 0.3);
+		border-radius: 3px;
 	}
 
-	.header h3 {
-		font-weight: 600;
-		font-size: 1rem;
+	.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+		background-color: rgba(156, 163, 175, 0.5);
 	}
 
-	.list {
-		max-height: 300px;
-		overflow-y: auto;
-	}
-
-	.footer {
-		padding: 0.75rem 1rem;
-		border-top: 1px solid #e5e7eb; /* gray-200 */
-		text-align: center;
-		font-size: 0.875rem;
-		cursor: pointer;
-		color: #ef4444; /* red-500 */
-		font-weight: 500;
-		transition: background-color 150ms ease-in-out;
-	}
-
-	:global(.dark) .footer {
-		border-color: #374151; /* gray-700 */
-		color: #f87171; /* red-400 */
-	}
-
-	.skeleton {
-		height: 60px;
-		padding: 0.75rem 1rem;
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		background: #f9fafb; /* gray-50 */
-		border-bottom: 1px solid #e5e7eb; /* gray-200 */
-		border-radius: 0.5rem;
-		animation: pulse 1.5s infinite;
-	}
-
-	:global(.dark) .skeleton {
-		background: #374151; /* gray-700 */
-		border-color: #4b5563; /* gray-600 */
-	}
-
-	@keyframes pulse {
-		0% {
-			opacity: 1;
+	/* Animation for new notifications (used dynamically via JS) */
+	@keyframes subtle-bounce {
+		0%, 100% {
+			transform: scale(1);
 		}
 		50% {
-			opacity: 0.5;
-		}
-		100% {
-			opacity: 1;
+			transform: scale(1.02);
 		}
 	}
 
-	/* For better dark mode transitions */
-	:global(.dark) .popover,
-	:global(.dark) .header,
-	:global(.dark) .footer,
-	:global(.dark) .skeleton {
-		transition:
-			background-color 200ms ease-in-out,
-			border-color 200ms ease-in-out;
+	/* Prevent body scroll when popover is open on mobile */
+	:global(body.notification-popover-open) {
+		overflow: hidden;
 	}
 </style>
